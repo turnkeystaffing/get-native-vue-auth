@@ -4,15 +4,33 @@ Vue 3 authentication plugin for BFF (Backend for Frontend) authentication flows.
 
 ## Installation
 
+This package is hosted on GitHub Packages. Configure your `.yarnrc.yml` to use the GitHub npm registry for the `@turnkeystaffing` scope:
+
+```yaml
+npmScopes:
+  turnkeystaffing:
+    npmRegistryServer: "https://npm.pkg.github.com"
+```
+
+Then add authentication in `~/.yarnrc.yml`:
+
+```yaml
+npmScopes:
+  turnkeystaffing:
+    npmAuthToken: "your_github_token"
+```
+
+Install the package:
+
 ```bash
-yarn add @turnkeystaffing/get-native-vue-auth@https://bitbucket.org/get-native/get-native-vue-auth.git#v1.0.0
+yarn add @turnkeystaffing/get-native-vue-auth
 ```
 
 ### Peer Dependencies
 
 ```bash
 yarn add vue@^3.4.0 pinia@^2.0.0 axios@^1.6.0 vue-router@^4.0.0 vuetify@^3.0.0 jwt-decode@^4.0.0
-yarn add @turnkeystaffing/get-native-vue-logger@https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0
+yarn add @turnkeystaffing/get-native-vue-logger
 ```
 
 ## Quick Start
@@ -270,4 +288,4 @@ interface AuthError {
 
 ## License
 
-Proprietary - Get Native
+Proprietary - Turnkey Staffing
