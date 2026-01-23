@@ -1,0 +1,50 @@
+{
+  "name": "@get-native/get-native-vue-auth",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@get-native/get-native-vue-logger": "https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0",
+    "axios": "^1.6.0",
+    "jwt-decode": "^4.0.0",
+    "pinia": "^2.0.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.0.0",
+    "vuetify": "^3.0.0"
+  },
+  "devDependencies": {
+    "@get-native/get-native-vue-logger": "https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0",
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "axios": "^1.6.0",
+    "jsdom": "^26.1.0",
+    "jwt-decode": "^4.0.0",
+    "pinia": "^2.0.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "vite-plugin-dts": "^3.7.1",
+    "vitest": "^4.0.18",
+    "vue": "^3.4.0",
+    "vue-router": "^4.0.0",
+    "vuetify": "^3.0.0"
+  },
+  "packageManager": "yarn@4.12.0"
+}
