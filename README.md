@@ -29,7 +29,7 @@ yarn add @turnkeystaffing/get-native-vue-auth
 ### Peer Dependencies
 
 ```bash
-yarn add vue@^3.4.0 pinia@^2.0.0 axios@^1.6.0 vue-router@^4.0.0 vuetify@^3.0.0 jwt-decode@^4.0.0
+yarn add vue@^3.4.0 pinia@^3.0.4 axios@^1.6.0 vue-router@^4.0.0 vuetify@^3.0.0 jwt-decode@^4.0.0
 yarn add @turnkeystaffing/get-native-vue-logger
 ```
 
