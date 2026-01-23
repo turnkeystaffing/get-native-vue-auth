@@ -12,7 +12,7 @@
 
 import { computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 defineOptions({ name: 'PermissionDeniedToast' })
 

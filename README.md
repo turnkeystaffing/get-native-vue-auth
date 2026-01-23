@@ -1,18 +1,18 @@
-# @get-native/get-native-vue-auth
+# @turnkeystaffing/get-native-vue-auth
 
 Vue 3 authentication plugin for BFF (Backend for Frontend) authentication flows. Provides session management, token handling, router guards, and error UI components.
 
 ## Installation
 
 ```bash
-yarn add @get-native/get-native-vue-auth@https://bitbucket.org/get-native/get-native-vue-auth.git#v1.0.0
+yarn add @turnkeystaffing/get-native-vue-auth@https://bitbucket.org/get-native/get-native-vue-auth.git#v1.0.0
 ```
 
 ### Peer Dependencies
 
 ```bash
 yarn add vue@^3.4.0 pinia@^2.0.0 axios@^1.6.0 vue-router@^4.0.0 vuetify@^3.0.0 jwt-decode@^4.0.0
-yarn add @get-native/get-native-vue-logger@https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0
+yarn add @turnkeystaffing/get-native-vue-logger@https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0
 ```
 
 ## Quick Start
@@ -23,7 +23,7 @@ yarn add @get-native/get-native-vue-logger@https://bitbucket.org/get-native/get-
 // main.ts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { bffAuthPlugin } from '@get-native/get-native-vue-auth'
+import { bffAuthPlugin } from '@turnkeystaffing/get-native-vue-auth'
 import App from './App.vue'
 
 const app = createApp(App)
@@ -44,7 +44,7 @@ app.mount('#app')
 ```typescript
 // router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
-import { setupAuthGuard } from '@get-native/get-native-vue-auth'
+import { setupAuthGuard } from '@turnkeystaffing/get-native-vue-auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -65,7 +65,7 @@ export default router
 ```typescript
 // services/api.ts
 import axios from 'axios'
-import { setupAuthInterceptors, useAuthStore } from '@get-native/get-native-vue-auth'
+import { setupAuthInterceptors, useAuthStore } from '@turnkeystaffing/get-native-vue-auth'
 
 const apiClient = axios.create({
   baseURL: 'https://api.example.com'
@@ -94,7 +94,7 @@ import {
   SessionExpiredModal,
   PermissionDeniedToast,
   ServiceUnavailableOverlay
-} from '@get-native/get-native-vue-auth'
+} from '@turnkeystaffing/get-native-vue-auth'
 </script>
 ```
 
@@ -104,7 +104,7 @@ import {
 
 ```vue
 <script setup lang="ts">
-import { useAuth } from '@get-native/get-native-vue-auth'
+import { useAuth } from '@turnkeystaffing/get-native-vue-auth'
 
 const { isAuthenticated, isLoading, user, error, login, logout, clearError } = useAuth()
 
@@ -132,7 +132,7 @@ async function handleLogout() {
 ### Direct Store Access
 
 ```typescript
-import { useAuthStore } from '@get-native/get-native-vue-auth'
+import { useAuthStore } from '@turnkeystaffing/get-native-vue-auth'
 
 const authStore = useAuthStore()
 
@@ -155,7 +155,7 @@ authStore.clearError()
 ### Auth Service
 
 ```typescript
-import { authService } from '@get-native/get-native-vue-auth'
+import { authService } from '@turnkeystaffing/get-native-vue-auth'
 
 // Check authentication status
 const { isAuthenticated, user } = await authService.checkAuth()
@@ -173,7 +173,7 @@ await authService.logout()
 ### JWT Utilities
 
 ```typescript
-import { decodeJwt, extractEmailFromJwt } from '@get-native/get-native-vue-auth'
+import { decodeJwt, extractEmailFromJwt } from '@turnkeystaffing/get-native-vue-auth'
 
 const payload = decodeJwt(accessToken)
 const email = extractEmailFromJwt(accessToken)

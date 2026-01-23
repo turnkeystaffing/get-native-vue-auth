@@ -8,7 +8,7 @@
  */
 
 import { jwtDecode } from 'jwt-decode'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 const logger = createLogger('JwtUtils')
 

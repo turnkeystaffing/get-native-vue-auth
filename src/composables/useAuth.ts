@@ -10,7 +10,7 @@
  * @example
  * ```vue
  * <script setup lang="ts">
- * import { useAuth } from '@get-native/get-native-vue-auth'
+ * import { useAuth } from '@turnkeystaffing/get-native-vue-auth'
  *
  * const { isAuthenticated, user, login, logout } = useAuth()
  *

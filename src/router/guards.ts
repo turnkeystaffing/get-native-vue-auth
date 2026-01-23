@@ -12,7 +12,7 @@
 import type { Router, RouteLocationNormalized, NavigationGuard } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authService, AuthConfigurationError } from '../services/auth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 /**
  * Logger for auth guard operations

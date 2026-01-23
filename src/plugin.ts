@@ -7,7 +7,7 @@
  * @example
  * ```typescript
  * import { createApp } from 'vue'
- * import { bffAuthPlugin } from '@get-native/get-native-vue-auth'
+ * import { bffAuthPlugin } from '@turnkeystaffing/get-native-vue-auth'
  *
  * const app = createApp(App)
  * app.use(bffAuthPlugin, {
@@ -18,7 +18,7 @@
  */
 
 import type { App, Plugin } from 'vue'
-import { createLogger, type Logger } from '@get-native/get-native-vue-logger'
+import { createLogger, type Logger } from '@turnkeystaffing/get-native-vue-logger'
 import type { BffAuthPluginOptions, BffAuthConfig } from './types/config'
 import { BFF_AUTH_CONFIG_KEY, setGlobalConfig } from './config'
 

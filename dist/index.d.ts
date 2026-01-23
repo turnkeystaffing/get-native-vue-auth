@@ -5,7 +5,7 @@ import { ComponentProvideOptions } from 'vue';
 import { ComputedRef } from 'vue';
 import { DefineComponent } from 'vue';
 import { InjectionKey } from 'vue';
-import { Logger } from '@get-native/get-native-vue-logger';
+import { Logger } from '@turnkeystaffing/get-native-vue-logger';
 import { NavigationGuard } from 'vue-router';
 import { PiniaCustomStateProperties } from 'pinia';
 import { Plugin as Plugin_2 } from 'vue';
@@ -352,8 +352,8 @@ export declare function setupAuthGuard(router: Router): void;
  *
  * @example
  * ```typescript
- * import { setupAuthInterceptors } from '@get-native/get-native-vue-auth'
- * import { useAuthStore } from '@get-native/get-native-vue-auth'
+ * import { setupAuthInterceptors } from '@turnkeystaffing/get-native-vue-auth'
+ * import { useAuthStore } from '@turnkeystaffing/get-native-vue-auth'
  *
  * // Only attach to protected API client
  * setupAuthInterceptors(apiClient, () => useAuthStore())
@@ -560,4 +560,3 @@ declare module 'vue-router' {
         public?: boolean;
     }
 }
-

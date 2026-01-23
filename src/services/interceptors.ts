@@ -19,7 +19,7 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios'
 import type { AuthError, BackendAuthError } from '../types/auth'
 import { parseAuthError, AuthConfigurationError, isAuthConfigured } from './auth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 /**
  * Logger for auth interceptor operations
@@ -58,8 +58,8 @@ export interface AuthStoreInterface {
  *
  * @example
  * ```typescript
- * import { setupAuthInterceptors } from '@get-native/get-native-vue-auth'
- * import { useAuthStore } from '@get-native/get-native-vue-auth'
+ * import { setupAuthInterceptors } from '@turnkeystaffing/get-native-vue-auth'
+ * import { useAuthStore } from '@turnkeystaffing/get-native-vue-auth'
  *
  * // Only attach to protected API client
  * setupAuthInterceptors(apiClient, () => useAuthStore())

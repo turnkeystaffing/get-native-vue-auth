@@ -10,7 +10,7 @@
 
 import { defineStore } from 'pinia'
 import { authService, AuthConfigurationError } from '../services/auth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { extractEmailFromJwt } from '../utils/jwt'
 import type { UserInfo, TokenResponse, AuthError } from '../types/auth'
 

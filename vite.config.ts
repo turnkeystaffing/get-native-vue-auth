@@ -36,7 +36,7 @@ export default defineConfig({
         'vuetify',
         'vuetify/components',
         'vuetify/directives',
-        '@get-native/get-native-vue-logger'
+        '@turnkeystaffing/get-native-vue-logger'
       ],
       output: {
         globals: {
@@ -46,7 +46,7 @@ export default defineConfig({
           'vue-router': 'VueRouter',
           'jwt-decode': 'jwtDecode',
           vuetify: 'Vuetify',
-          '@get-native/get-native-vue-logger': 'GetNativeVueLogger'
+          '@turnkeystaffing/get-native-vue-logger': 'GetNativeVueLogger'
         }
       }
     }

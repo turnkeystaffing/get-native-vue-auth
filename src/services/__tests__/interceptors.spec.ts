@@ -17,7 +17,7 @@ import type { AuthError } from '../../types/auth'
 import type { BffAuthConfig } from '../../types/config'
 
 // Mock logger
-vi.mock('@get-native/get-native-vue-logger', () => ({
+vi.mock('@turnkeystaffing/get-native-vue-logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),

@@ -1,4 +1,4 @@
-import { createLogger as m } from "@get-native/get-native-vue-logger";
+import { createLogger as m } from "@turnkeystaffing/get-native-vue-logger";
 import { inject as ie, computed as p, defineComponent as M, ref as F, resolveComponent as u, openBlock as N, createBlock as O, withCtx as d, createVNode as g, createTextVNode as v, toDisplayString as B, createElementVNode as C, watch as se, onUnmounted as oe } from "vue";
 import { defineStore as ae } from "pinia";
 import b from "axios";

@@ -6,7 +6,7 @@
  * @see plugin.ts for Vue plugin implementation
  */
 
-import type { Logger } from '@get-native/get-native-vue-logger'
+import type { Logger } from '@turnkeystaffing/get-native-vue-logger'
 
 /**
  * Plugin options provided during app.use()

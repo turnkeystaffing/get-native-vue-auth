@@ -77,7 +77,7 @@ config.global.stubs = {
 }
 
 // Mock logger
-vi.mock('@get-native/get-native-vue-logger', () => ({
+vi.mock('@turnkeystaffing/get-native-vue-logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),

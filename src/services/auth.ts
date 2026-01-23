@@ -23,7 +23,7 @@ import type {
   BackendTokenResponse,
   LogoutResponse
 } from '../types/auth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { getGlobalConfig } from '../config'
 
 /**

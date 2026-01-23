@@ -1,6 +1,13 @@
 {
-  "name": "@get-native/get-native-vue-auth",
+  "name": "@turnkeystaffing/get-native-vue-auth",
   "version": "1.0.0",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/turnkeystaffing/get-native-vue-auth.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,7 +28,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@get-native/get-native-vue-logger": "https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0",
+    "@turnkeystaffing/get-native-vue-logger": "^1.0.0",
     "axios": "^1.6.0",
     "jwt-decode": "^4.0.0",
     "pinia": "^2.0.0",
@@ -30,7 +37,7 @@
     "vuetify": "^3.0.0"
   },
   "devDependencies": {
-    "@get-native/get-native-vue-logger": "https://bitbucket.org/get-native/get-native-vue-logger.git#v1.0.0",
+    "@turnkeystaffing/get-native-vue-logger": "^1.0.0",
     "@types/node": "^20.11.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.6",
@@ -40,7 +47,7 @@
     "pinia": "^2.0.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vite-plugin-dts": "^3.7.1",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.18",
     "vue": "^3.4.0",
     "vue-router": "^4.0.0",

@@ -1,5 +1,5 @@
 /**
- * @get-native/get-native-vue-auth
+ * @turnkeystaffing/get-native-vue-auth
  *
  * Vue plugin for BFF (Backend-for-Frontend) authentication.
  * Provides a complete authentication solution including:

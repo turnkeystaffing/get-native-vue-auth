@@ -14,7 +14,7 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'
-import { createLogger } from '@get-native/get-native-vue-logger'
+import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 defineOptions({ name: 'ServiceUnavailableOverlay' })
 
