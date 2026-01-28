@@ -57,13 +57,6 @@ function getClientId(): string {
 }
 
 /**
- * Get OAuth token client ID from config
- */
-function getTokenClientId(): string {
-  return getGlobalConfig()?.tokenClientId || ''
-}
-
-/**
  * Flag indicating if auth is properly configured.
  * When false, auth operations will fail gracefully rather than redirect.
  */
@@ -255,7 +248,7 @@ class AuthService {
     try {
       const response = await axios.post<BackendTokenResponse>(
         `${getBffBaseUrl()}/bff/token`,
-        { client_id: getTokenClientId() },
+        { client_id: getClientId() },
         { withCredentials: true }
       )
 

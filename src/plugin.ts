@@ -45,7 +45,6 @@ function createConfig(options: BffAuthPluginOptions): BffAuthConfig {
   return {
     bffBaseUrl: options.bffBaseUrl,
     clientId: options.clientId,
-    tokenClientId: options.tokenClientId ?? options.clientId,
     logger
   }
 }
@@ -72,8 +71,7 @@ export const bffAuthPlugin: Plugin<[BffAuthPluginOptions]> = {
 
     config.logger.debug('BFF Auth plugin installed', {
       bffBaseUrl: config.bffBaseUrl,
-      clientId: config.clientId,
-      tokenClientId: config.tokenClientId
+      clientId: config.clientId
     })
   }
 }

@@ -50,8 +50,7 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(bffAuthPlugin, {
   bffBaseUrl: 'https://api.example.com',
-  clientId: 'my-app-client-id',
-  tokenClientId: 'my-token-client-id' // Optional, defaults to clientId
+  clientId: 'my-app-client-id'
 })
 
 app.mount('#app')
@@ -204,8 +203,7 @@ const email = extractEmailFromJwt(accessToken)
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `bffBaseUrl` | `string` | Yes | Base URL of the BFF server |
-| `clientId` | `string` | Yes | OAuth client ID for login |
-| `tokenClientId` | `string` | No | Client ID for token requests (defaults to `clientId`) |
+| `clientId` | `string` | Yes | OAuth client ID |
 | `logger` | `Logger` | No | Custom logger instance |
 
 ### Route Meta

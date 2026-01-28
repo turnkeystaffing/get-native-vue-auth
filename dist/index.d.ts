@@ -163,8 +163,6 @@ export declare interface BffAuthConfig {
     bffBaseUrl: string;
     /** OAuth client ID for login flow */
     clientId: string;
-    /** OAuth client ID for token endpoint */
-    tokenClientId: string;
     /** Logger instance */
     logger: Logger;
 }
@@ -185,8 +183,6 @@ export declare interface BffAuthPluginOptions {
     bffBaseUrl: string;
     /** OAuth client ID for login flow - required */
     clientId: string;
-    /** OAuth client ID for token endpoint - optional, defaults to clientId */
-    tokenClientId?: string;
     /** Custom logger instance - optional, uses default logger if not provided */
     logger?: Logger;
 }

@@ -39,7 +39,6 @@ describe('AuthService', () => {
     const mockConfig: BffAuthConfig = {
       bffBaseUrl: 'http://localhost:8080',
       clientId: 'test-client',
-      tokenClientId: 'test-token-client',
       logger: {
         info: vi.fn(),
         warn: vi.fn(),
