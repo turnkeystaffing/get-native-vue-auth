@@ -11,6 +11,7 @@
  */
 
 import { computed } from 'vue'
+import { VSnackbar, VIcon, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 

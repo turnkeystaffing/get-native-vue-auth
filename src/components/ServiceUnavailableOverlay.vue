@@ -11,6 +11,7 @@
  */
 
 import { computed, ref, watch, onUnmounted } from 'vue'
+import { VOverlay, VCard, VCardTitle, VCardText, VCardActions, VIcon, VProgressLinear, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'

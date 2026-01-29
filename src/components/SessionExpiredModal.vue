@@ -11,6 +11,7 @@
  */
 
 import { computed, ref } from 'vue'
+import { VDialog, VCard, VCardTitle, VCardText, VCardActions, VIcon, VSpacer, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
