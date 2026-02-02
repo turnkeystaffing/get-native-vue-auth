@@ -97,7 +97,7 @@ describe('AuthService', () => {
     })
   })
 
-  describe('initiateLogin', () => {
+  describe('login', () => {
     const originalLocation = window.location
 
     beforeEach(() => {
@@ -121,7 +121,7 @@ describe('AuthService', () => {
     })
 
     it('redirects to BFF login with client_id and redirect_url (AC2)', () => {
-      authService.initiateLogin()
+      authService.login()
 
       expect(window.location.href).toContain('/bff/login')
       expect(window.location.href).toContain('client_id=')
@@ -129,7 +129,7 @@ describe('AuthService', () => {
     })
 
     it('uses provided full URL when specified (AC2)', () => {
-      authService.initiateLogin('http://localhost:3000/custom-return')
+      authService.login({ returnUrl: 'http://localhost:3000/custom-return' })
 
       expect(window.location.href).toContain(
         'redirect_url=' + encodeURIComponent('http://localhost:3000/custom-return')
@@ -137,7 +137,7 @@ describe('AuthService', () => {
     })
 
     it('converts relative path to absolute URL', () => {
-      authService.initiateLogin('/dashboard')
+      authService.login({ returnUrl: '/dashboard' })
 
       expect(window.location.href).toContain(
         'redirect_url=' + encodeURIComponent('http://localhost:3000/dashboard')
@@ -145,7 +145,7 @@ describe('AuthService', () => {
     })
 
     it('converts relative path with query params to absolute URL', () => {
-      authService.initiateLogin('/protected?query=1&filter=active')
+      authService.login({ returnUrl: '/protected?query=1&filter=active' })
 
       expect(window.location.href).toContain(
         'redirect_url=' + encodeURIComponent('http://localhost:3000/protected?query=1&filter=active')
@@ -154,9 +154,16 @@ describe('AuthService', () => {
 
     it('uses current URL as default redirect when no returnUrl provided (AC2)', () => {
       window.location.href = 'http://localhost:3000/current-page'
-      authService.initiateLogin()
+      authService.login()
 
       expect(window.location.href).toContain('/bff/login')
+    })
+
+    it('always uses config clientId', () => {
+      authService.login({ returnUrl: '/page' })
+
+      // Should use 'test-client' from mock config (line 41)
+      expect(window.location.href).toContain('client_id=test-client')
     })
 
     describe('Configuration Error Handling', () => {
@@ -164,8 +171,8 @@ describe('AuthService', () => {
         // Clear config to simulate missing config
         setGlobalConfig(null as any)
 
-        expect(() => authService.initiateLogin()).toThrow(AuthConfigurationError)
-        expect(() => authService.initiateLogin()).toThrow(
+        expect(() => authService.login()).toThrow(AuthConfigurationError)
+        expect(() => authService.login()).toThrow(
           'Authentication service is not configured'
         )
       })
@@ -173,7 +180,7 @@ describe('AuthService', () => {
 
     describe('Open Redirect Prevention (Security)', () => {
       it('blocks external URLs and redirects to home', () => {
-        authService.initiateLogin('https://malicious-site.com/steal-data')
+        authService.login({ returnUrl: 'https://malicious-site.com/steal-data' })
 
         // Should redirect to home page, not the malicious site
         expect(window.location.href).toContain(
@@ -182,7 +189,7 @@ describe('AuthService', () => {
       })
 
       it('blocks external URLs with different port', () => {
-        authService.initiateLogin('http://localhost:9999/different-port')
+        authService.login({ returnUrl: 'http://localhost:9999/different-port' })
 
         // Different port = different origin, should be blocked
         expect(window.location.href).toContain(
@@ -191,12 +198,80 @@ describe('AuthService', () => {
       })
 
       it('allows same-origin URLs', () => {
-        authService.initiateLogin('http://localhost:3000/safe-page')
+        authService.login({ returnUrl: 'http://localhost:3000/safe-page' })
 
         expect(window.location.href).toContain(
           'redirect_url=' + encodeURIComponent('http://localhost:3000/safe-page')
         )
       })
+    })
+  })
+
+  describe('completeOAuthFlow', () => {
+    const originalLocation = window.location
+
+    beforeEach(() => {
+      // Mock window.location with origin support
+      Object.defineProperty(window, 'location', {
+        value: {
+          href: 'http://login.example.com/login',
+          origin: 'http://login.example.com'
+        },
+        writable: true,
+        configurable: true
+      })
+    })
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true
+      })
+    })
+
+    it('redirects to BFF login with provided clientId and returnUrl', () => {
+      authService.completeOAuthFlow({
+        clientId: 'product-spa',
+        returnUrl: 'http://app.example.com/dashboard'
+      })
+
+      expect(window.location.href).toContain('/bff/login')
+      expect(window.location.href).toContain('client_id=product-spa')
+      expect(window.location.href).toContain(
+        'redirect_url=' + encodeURIComponent('http://app.example.com/dashboard')
+      )
+    })
+
+    it('allows cross-origin redirects (required for Central Login)', () => {
+      // Central Login at login.example.com must redirect to app.example.com
+      authService.completeOAuthFlow({
+        clientId: 'my-app',
+        returnUrl: 'http://app.example.com/callback'
+      })
+
+      // Should NOT block the cross-origin redirect
+      expect(window.location.href).toContain(
+        'redirect_url=' + encodeURIComponent('http://app.example.com/callback')
+      )
+    })
+
+    it('throws error when clientId is missing', () => {
+      expect(() =>
+        authService.completeOAuthFlow({
+          clientId: '',
+          returnUrl: 'http://app.example.com/dashboard'
+        })
+      ).toThrow('completeOAuthFlow requires both clientId and returnUrl')
+    })
+
+    it('throws error when returnUrl is missing', () => {
+      expect(() =>
+        authService.completeOAuthFlow({
+          clientId: 'product-spa',
+          returnUrl: ''
+        })
+      ).toThrow('completeOAuthFlow requires both clientId and returnUrl')
     })
   })
 

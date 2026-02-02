@@ -121,7 +121,7 @@ export function createAuthGuard(
       // If auth timed out, treat as unauthenticated (fail closed for security)
       if (!authReady) {
         logger.warn('Auth not ready, redirecting to login')
-        authSvc.initiateLogin(to.fullPath)
+        authSvc.login({ returnUrl: to.fullPath })
         return false
       }
 
@@ -131,7 +131,7 @@ export function createAuthGuard(
       }
 
       // Not authenticated - redirect to Central Login (BFF handles return URL via redirect_url param)
-      authSvc.initiateLogin(to.fullPath)
+      authSvc.login({ returnUrl: to.fullPath })
 
       // Return false to cancel navigation (page will redirect to Central Login)
       return false
@@ -149,7 +149,7 @@ export function createAuthGuard(
 
       // Unexpected error - fail closed (redirect to login for security)
       logger.error('Unexpected error in auth guard:', error)
-      authSvc.initiateLogin(to.fullPath)
+      authSvc.login({ returnUrl: to.fullPath })
       return false
     }
   }

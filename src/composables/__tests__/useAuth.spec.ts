@@ -25,7 +25,7 @@ vi.mock('../../services/auth', () => ({
   authService: {
     checkAuth: vi.fn(),
     getAccessToken: vi.fn(),
-    initiateLogin: vi.fn(),
+    login: vi.fn(),
     logout: vi.fn()
   },
   AuthConfigurationError: class AuthConfigurationError extends Error {
@@ -113,7 +113,7 @@ describe('useAuth', () => {
   describe('actions', () => {
     it('login calls store login with returnUrl', () => {
       const authStore = useAuthStore()
-      // Mock implementation to prevent actual initiateLogin call (requires BFF_BASE_URL)
+      // Mock implementation to prevent actual login call (requires BFF_BASE_URL)
       const loginSpy = vi.spyOn(authStore, 'login').mockImplementation(() => {})
 
       const { login } = useAuth()
@@ -124,7 +124,7 @@ describe('useAuth', () => {
 
     it('login calls store login without returnUrl', () => {
       const authStore = useAuthStore()
-      // Mock implementation to prevent actual initiateLogin call (requires BFF_BASE_URL)
+      // Mock implementation to prevent actual login call (requires BFF_BASE_URL)
       const loginSpy = vi.spyOn(authStore, 'login').mockImplementation(() => {})
 
       const { login } = useAuth()

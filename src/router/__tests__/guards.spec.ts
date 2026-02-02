@@ -26,7 +26,7 @@ vi.mock('../../services/auth', () => ({
   authService: {
     checkAuth: vi.fn(),
     getAccessToken: vi.fn(),
-    initiateLogin: vi.fn(),
+    login: vi.fn(),
     logout: vi.fn()
   },
   AuthConfigurationError: class AuthConfigurationError extends Error {
@@ -79,7 +79,7 @@ describe('Auth Guards', () => {
    * Mock service interface for testing
    */
   interface MockService {
-    initiateLogin: ReturnType<typeof vi.fn>
+    login: ReturnType<typeof vi.fn>
   }
 
   /**
@@ -103,7 +103,7 @@ describe('Auth Guards', () => {
     }
 
     const service: MockService = {
-      initiateLogin: vi.fn()
+      login: vi.fn()
     }
 
     return {
@@ -133,7 +133,7 @@ describe('Auth Guards', () => {
       await router.push('/protected')
 
       expect(router.currentRoute.value.path).toBe('/protected')
-      expect(mocks.service.initiateLogin).not.toHaveBeenCalled()
+      expect(mocks.service.login).not.toHaveBeenCalled()
     })
 
     it('allows navigation to home route', async () => {
@@ -143,7 +143,7 @@ describe('Auth Guards', () => {
       await router.push('/')
 
       expect(router.currentRoute.value.path).toBe('/')
-      expect(mocks.service.initiateLogin).not.toHaveBeenCalled()
+      expect(mocks.service.login).not.toHaveBeenCalled()
     })
 
     it('allows navigation to public routes', async () => {
@@ -153,7 +153,7 @@ describe('Auth Guards', () => {
       await router.push('/public')
 
       expect(router.currentRoute.value.path).toBe('/public')
-      expect(mocks.service.initiateLogin).not.toHaveBeenCalled()
+      expect(mocks.service.login).not.toHaveBeenCalled()
     })
   })
 
@@ -164,7 +164,7 @@ describe('Auth Guards', () => {
 
       await router.push('/protected')
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/protected')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
     })
 
     it('redirects to login for home route (protected by default)', async () => {
@@ -173,25 +173,25 @@ describe('Auth Guards', () => {
 
       await router.push('/')
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/' })
     })
 
-    it('passes return URL with query parameters to initiateLogin', async () => {
+    it('passes return URL with query parameters to login', async () => {
       const { deps, mocks } = createMockDeps({ isAuthenticated: false })
       router.beforeEach(createAuthGuard(deps))
 
       await router.push('/protected?query=1&filter=active')
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/protected?query=1&filter=active')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected?query=1&filter=active' })
     })
 
-    it('passes return URL with hash to initiateLogin', async () => {
+    it('passes return URL with hash to login', async () => {
       const { deps, mocks } = createMockDeps({ isAuthenticated: false })
       router.beforeEach(createAuthGuard(deps))
 
       await router.push('/dashboard#section')
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/dashboard#section')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/dashboard#section' })
     })
   })
 
@@ -203,7 +203,7 @@ describe('Auth Guards', () => {
       await router.push('/public')
 
       expect(router.currentRoute.value.path).toBe('/public')
-      expect(mocks.service.initiateLogin).not.toHaveBeenCalled()
+      expect(mocks.service.login).not.toHaveBeenCalled()
     })
 
     it('allows navigation for authenticated users', async () => {
@@ -287,7 +287,7 @@ describe('Auth Guards', () => {
       router.beforeEach(createAuthGuard(deps))
       await router.push('/protected')
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/protected')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
       consoleSpy.mockRestore()
     })
 
@@ -302,7 +302,7 @@ describe('Auth Guards', () => {
       await router.push('/public')
 
       expect(router.currentRoute.value.path).toBe('/public')
-      expect(mocks.service.initiateLogin).not.toHaveBeenCalled()
+      expect(mocks.service.login).not.toHaveBeenCalled()
       consoleSpy.mockRestore()
     })
 
@@ -323,7 +323,7 @@ describe('Auth Guards', () => {
       await vi.advanceTimersByTimeAsync(10100)
       await pushPromise
 
-      expect(mocks.service.initiateLogin).toHaveBeenCalledWith('/protected')
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
 
       vi.useRealTimers()
       consoleSpy.mockRestore()

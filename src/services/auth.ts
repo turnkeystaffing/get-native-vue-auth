@@ -3,7 +3,8 @@
  *
  * Provides methods for authentication operations:
  * - checkAuth: Verify if user has active session
- * - initiateLogin: Redirect to Central Login
+ * - login: Redirect to Central Login (for Product SPAs)
+ * - completeOAuthFlow: Complete OAuth flow after credential submission (for Central Login)
  * - getAccessToken: Get JWT for API calls
  * - logout: End session
  *
@@ -109,6 +110,26 @@ export interface LoginCredentials {
 }
 
 /**
+ * Options for initiating the login flow (Product SPAs)
+ */
+export interface LoginOptions {
+  /** URL to return to after authentication (defaults to current URL) */
+  returnUrl?: string
+}
+
+/**
+ * Options for completing the OAuth flow (Central Login only)
+ * Both parameters are required since Central Login must pass through
+ * the client_id and redirect_url from the originating SPA.
+ */
+export interface CompleteOAuthFlowOptions {
+  /** OAuth client ID from the originating SPA (required) */
+  clientId: string
+  /** URL to return to after authentication - the originating SPA's URL (required) */
+  returnUrl: string
+}
+
+/**
  * Auth Service Client for BFF endpoints
  */
 class AuthService {
@@ -175,14 +196,16 @@ class AuthService {
   }
 
   /**
-   * Initiate login flow by redirecting to BFF login endpoint
-   * This performs a full page redirect to Central Login
+   * Start login flow by redirecting to BFF login endpoint.
+   * For use by Product SPAs to redirect users to Central Login.
    *
-   * @param returnUrl - URL or path to return to after authentication (defaults to current URL)
-   *                    Can be a full URL (http://...) or a relative path (/dashboard)
-   *                    External URLs are blocked for security (Open Redirect prevention)
+   * Security: Enforces same-origin redirects to prevent open redirect attacks.
+   *
+   * @param options - Login options with optional returnUrl (defaults to current URL)
    */
-  initiateLogin(returnUrl?: string): void {
+  login(options?: LoginOptions): void {
+    const opts = options || {}
+
     // GUARD: Prevent redirect loop when auth is not configured
     if (!isAuthConfigured()) {
       logger.error('Cannot initiate login: Auth configuration is incomplete')
@@ -191,7 +214,7 @@ class AuthService {
       )
     }
 
-    const target = returnUrl || window.location.href
+    const target = opts.returnUrl || window.location.href
     let urlObj: URL
 
     try {
@@ -224,6 +247,39 @@ class AuthService {
     logger.debug('Initiating login redirect', { returnUrl: absoluteRedirectUrl })
 
     // Full page redirect to BFF login
+    window.location.href = `${loginPath}?${params.toString()}`
+  }
+
+  /**
+   * Complete OAuth flow after successful credential submission.
+   * For use by Central Login only, after submitCredentials() succeeds.
+   *
+   * This method allows cross-origin redirects since Central Login must
+   * redirect users back to the originating Product SPA. The BFF validates
+   * the redirect_url against registered OAuth client redirect URIs.
+   *
+   * @param options - Required clientId and returnUrl from the originating SPA
+   */
+  completeOAuthFlow(options: CompleteOAuthFlowOptions): void {
+    const { clientId, returnUrl } = options
+
+    if (!clientId || !returnUrl) {
+      throw new Error('completeOAuthFlow requires both clientId and returnUrl')
+    }
+
+    // Build login URL with query parameters
+    // Note: We skip same-origin validation here because Central Login
+    // must redirect to external origins (the Product SPAs).
+    // The BFF validates redirect_url against registered client URIs.
+    const loginPath = `${getBffBaseUrl()}/bff/login`
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_url: returnUrl
+    })
+
+    logger.debug('Completing OAuth flow', { clientId, returnUrl })
+
+    // Full page redirect to BFF login (with oauth_session cookie set)
     window.location.href = `${loginPath}?${params.toString()}`
   }
 

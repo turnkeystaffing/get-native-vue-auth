@@ -29,7 +29,7 @@ vi.mock('../../services/auth', async (importOriginal) => {
     authService: {
       checkAuth: vi.fn(),
       getAccessToken: vi.fn(),
-      initiateLogin: vi.fn(),
+      login: vi.fn(),
       logout: vi.fn()
     }
   }
@@ -326,21 +326,21 @@ describe('AuthStore', () => {
   })
 
   describe('login', () => {
-    it('sets isLoading and calls authService.initiateLogin', () => {
+    it('sets isLoading and calls authService.login', () => {
       const store = useAuthStore()
 
       store.login('/dashboard')
 
       expect(store.isLoading).toBe(true)
-      expect(authService.initiateLogin).toHaveBeenCalledWith('/dashboard')
+      expect(authService.login).toHaveBeenCalledWith({ returnUrl: '/dashboard' })
     })
 
-    it('calls initiateLogin without returnUrl when not provided', () => {
+    it('calls login without returnUrl when not provided', () => {
       const store = useAuthStore()
 
       store.login()
 
-      expect(authService.initiateLogin).toHaveBeenCalledWith(undefined)
+      expect(authService.login).toHaveBeenCalledWith(undefined)
     })
 
     it('clears existing error before redirect', () => {
@@ -380,7 +380,7 @@ describe('AuthStore', () => {
       expect(store.isAuthenticated).toBe(false)
       expect(store.user).toBeNull()
       expect(store.accessToken).toBeNull()
-      expect(authService.initiateLogin).toHaveBeenCalled()
+      expect(authService.login).toHaveBeenCalled()
     })
 
     it('resets state even if logout API fails', async () => {
@@ -402,7 +402,7 @@ describe('AuthStore', () => {
 
       expect(store.isAuthenticated).toBe(false)
       expect(store.user).toBeNull()
-      expect(authService.initiateLogin).toHaveBeenCalled()
+      expect(authService.login).toHaveBeenCalled()
     })
   })
 

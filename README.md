@@ -180,11 +180,35 @@ const { isAuthenticated, user } = await authService.checkAuth()
 // Get access token
 const token = await authService.getAccessToken()
 
-// Initiate login redirect
-authService.initiateLogin('/return-url')
+// Start login flow - redirects to Central Login (for Product SPAs)
+authService.login({ returnUrl: '/dashboard' })
 
 // Logout
 await authService.logout()
+```
+
+### Central Login Integration
+
+Central Login handles the credential submission, then redirects back through BFF to complete the OAuth flow:
+
+```typescript
+import { authService } from '@turnkeystaffing/get-native-vue-auth'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// Get params passed from /oauth/authorize redirect
+const clientId = route.query.client_id as string
+const returnUrl = route.query.redirect_url as string
+
+async function handleLogin(email: string, password: string) {
+  // Submit credentials (sets oauth_session cookie)
+  await authService.submitCredentials(email, password)
+
+  // Complete OAuth flow - redirects to /bff/login then back to originating SPA
+  // Note: This allows cross-origin redirects (required to return to Product SPA)
+  authService.completeOAuthFlow({ clientId, returnUrl })
+}
 ```
 
 ### JWT Utilities

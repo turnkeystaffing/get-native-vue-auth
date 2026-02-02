@@ -73,14 +73,25 @@ export declare class AuthService {
      */
     checkAuth(): Promise<CheckAuthResponse>;
     /**
-     * Initiate login flow by redirecting to BFF login endpoint
-     * This performs a full page redirect to Central Login
+     * Start login flow by redirecting to BFF login endpoint.
+     * For use by Product SPAs to redirect users to Central Login.
      *
-     * @param returnUrl - URL or path to return to after authentication (defaults to current URL)
-     *                    Can be a full URL (http://...) or a relative path (/dashboard)
-     *                    External URLs are blocked for security (Open Redirect prevention)
+     * Security: Enforces same-origin redirects to prevent open redirect attacks.
+     *
+     * @param options - Login options with optional returnUrl (defaults to current URL)
      */
-    initiateLogin(returnUrl?: string): void;
+    login(options?: LoginOptions): void;
+    /**
+     * Complete OAuth flow after successful credential submission.
+     * For use by Central Login only, after submitCredentials() succeeds.
+     *
+     * This method allows cross-origin redirects since Central Login must
+     * redirect users back to the originating Product SPA. The BFF validates
+     * the redirect_url against registered OAuth client redirect URIs.
+     *
+     * @param options - Required clientId and returnUrl from the originating SPA
+     */
+    completeOAuthFlow(options: CompleteOAuthFlowOptions): void;
     /**
      * Get fresh access token for API calls
      * Call this before making protected API requests
@@ -196,6 +207,18 @@ export declare interface CheckAuthResponse {
 }
 
 /**
+ * Options for completing the OAuth flow (Central Login only)
+ * Both parameters are required since Central Login must pass through
+ * the client_id and redirect_url from the originating SPA.
+ */
+export declare interface CompleteOAuthFlowOptions {
+    /** OAuth client ID from the originating SPA (required) */
+    clientId: string;
+    /** URL to return to after authentication - the originating SPA's URL (required) */
+    returnUrl: string;
+}
+
+/**
  * Create auth navigation guard with encapsulated state
  *
  * Uses factory pattern to encapsulate initialization state in closure,
@@ -285,6 +308,14 @@ export declare interface JwtPayload {
 export declare interface LoginCredentials {
     email: string;
     password: string;
+}
+
+/**
+ * Options for initiating the login flow (Product SPAs)
+ */
+export declare interface LoginOptions {
+    /** URL to return to after authentication (defaults to current URL) */
+    returnUrl?: string;
 }
 
 /**

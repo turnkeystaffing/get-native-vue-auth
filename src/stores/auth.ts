@@ -229,7 +229,7 @@ export const useAuthStore = defineStore('auth', {
     login(returnUrl?: string) {
       this.isLoading = true
       this.error = null // Clear any existing error before redirect
-      authService.initiateLogin(returnUrl)
+      authService.login(returnUrl ? { returnUrl } : undefined)
       // Note: Page will redirect, isLoading won't reset
     },
 
@@ -248,7 +248,7 @@ export const useAuthStore = defineStore('auth', {
       this.$reset()
 
       // Redirect to login (Central Login)
-      authService.initiateLogin()
+      authService.login()
     },
 
     /**

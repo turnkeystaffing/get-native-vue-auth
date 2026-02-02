@@ -90,7 +90,7 @@ vi.mock('../../services/auth', () => ({
   authService: {
     checkAuth: vi.fn().mockResolvedValue({ isAuthenticated: false, user: null }),
     logout: vi.fn().mockResolvedValue(undefined),
-    initiateLogin: vi.fn(),
+    login: vi.fn(),
     getAccessToken: vi.fn().mockResolvedValue(null)
   }
 }))
