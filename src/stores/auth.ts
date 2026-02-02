@@ -11,8 +11,8 @@
 import { defineStore } from 'pinia'
 import { authService, AuthConfigurationError } from '../services/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
-import { extractEmailFromJwt } from '../utils/jwt'
-import type { UserInfo, TokenResponse, AuthError } from '../types/auth'
+import { decodeAccessToken } from '../utils/jwt'
+import type { UserInfo, TokenResponse, AuthError, DecodedAccessToken } from '../types/auth'
 
 /** Minimum valid token expiry time in seconds (5 seconds) */
 const MIN_EXPIRES_IN_SECONDS = 5
@@ -70,15 +70,80 @@ export const useAuthStore = defineStore('auth', {
     hasError: (state) => state.error !== null,
 
     /**
+     * Decoded JWT access token with all claims.
+     * Returns null if token is not available or invalid.
+     */
+    decodedToken: (state): DecodedAccessToken | null => {
+      return decodeAccessToken(state.accessToken)
+    },
+
+    /**
      * User email extracted from JWT access token.
      * Returns null if token is not available or email claim is missing.
      */
-    userEmail: (state): string | null => {
-      return extractEmailFromJwt(state.accessToken)
+    userEmail(): string | null {
+      return this.decodedToken?.email ?? null
+    },
+
+    /**
+     * User roles from JWT access token.
+     * Returns empty array if token is not available.
+     */
+    userRoles(): string[] {
+      return this.decodedToken?.roles ?? []
+    },
+
+    /**
+     * User ID from JWT access token.
+     * Returns null if token is not available.
+     */
+    userId(): string | null {
+      return this.decodedToken?.user_id ?? null
+    },
+
+    /**
+     * User GUID from JWT access token.
+     * Returns null if token is not available.
+     */
+    userGuid(): string | null {
+      return this.decodedToken?.guid ?? null
+    },
+
+    /**
+     * Username from JWT access token.
+     * Returns null if token is not available.
+     */
+    username(): string | null {
+      return this.decodedToken?.username ?? null
+    },
+
+    /**
+     * Session ID from JWT access token.
+     * Returns null if token is not available.
+     */
+    sessionId(): string | null {
+      return this.decodedToken?.session_id ?? null
     }
   },
 
   actions: {
+    /**
+     * Check if user has a specific role.
+     *
+     * @param role - The role to check for
+     * @returns true if user has the specified role
+     *
+     * @example
+     * ```typescript
+     * if (authStore.hasRole('ROLE_AFFILIATE_ADMIN')) {
+     *   // Show admin features
+     * }
+     * ```
+     */
+    hasRole(role: string): boolean {
+      return this.userRoles.includes(role)
+    },
+
     /**
      * Check if token needs refresh (within 60s of expiry)
      * ADR-006: 60 second buffer before expiry

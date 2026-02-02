@@ -9,6 +9,7 @@
 
 import { jwtDecode } from 'jwt-decode'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
+import type { DecodedAccessToken } from '../types/auth'
 
 const logger = createLogger('JwtUtils')
 
@@ -80,4 +81,51 @@ export function extractEmailFromJwt(token: string | null | undefined): string | 
   }
 
   return payload.email
+}
+
+/**
+ * Decode a JWT access token and return typed claims.
+ * Validates that required fields (email, user_id, roles) are present.
+ *
+ * @param token - The JWT token string to decode
+ * @returns The decoded token with typed claims, or null if decoding fails or required fields are missing
+ *
+ * @example
+ * ```typescript
+ * const decoded = decodeAccessToken(accessToken)
+ * if (decoded) {
+ *   console.log('User roles:', decoded.roles)
+ *   console.log('User ID:', decoded.user_id)
+ * }
+ * ```
+ */
+export function decodeAccessToken(token: string | null | undefined): DecodedAccessToken | null {
+  if (!token) {
+    return null
+  }
+
+  try {
+    const payload = jwtDecode<DecodedAccessToken>(token)
+
+    // Validate required fields are present
+    if (!payload.email || typeof payload.email !== 'string') {
+      logger.warn('Decoded token missing required email field')
+      return null
+    }
+
+    if (!payload.user_id || typeof payload.user_id !== 'string') {
+      logger.warn('Decoded token missing required user_id field')
+      return null
+    }
+
+    if (!Array.isArray(payload.roles)) {
+      logger.warn('Decoded token missing required roles field')
+      return null
+    }
+
+    return payload
+  } catch (error) {
+    logger.warn('Failed to decode access token:', error)
+    return null
+  }
 }

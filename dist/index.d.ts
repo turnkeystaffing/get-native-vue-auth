@@ -230,6 +230,45 @@ export declare interface CompleteOAuthFlowOptions {
 export declare function createAuthGuard(deps?: AuthGuardDependencies): NavigationGuard;
 
 /**
+ * Decode a JWT access token and return typed claims.
+ * Validates that required fields (email, user_id, roles) are present.
+ *
+ * @param token - The JWT token string to decode
+ * @returns The decoded token with typed claims, or null if decoding fails or required fields are missing
+ *
+ * @example
+ * ```typescript
+ * const decoded = decodeAccessToken(accessToken)
+ * if (decoded) {
+ *   console.log('User roles:', decoded.roles)
+ *   console.log('User ID:', decoded.user_id)
+ * }
+ * ```
+ */
+export declare function decodeAccessToken(token: string | null | undefined): DecodedAccessToken | null;
+
+/**
+ * Decoded JWT access token claims from our auth provider.
+ * Contains user identity, roles, and standard JWT claims.
+ */
+export declare interface DecodedAccessToken {
+    username: string;
+    email: string;
+    roles: string[];
+    guid: string;
+    user_id: string;
+    session_id: string;
+    client_id: string;
+    iss: string;
+    sub: string;
+    aud: string[];
+    exp: number;
+    nbf: number;
+    iat: number;
+    jti: string;
+}
+
+/**
  * Safely decode a JWT token and extract its payload.
  *
  * @param token - The JWT token string to decode
@@ -273,14 +312,6 @@ export declare function getGlobalConfig(): BffAuthConfig | null;
  */
 export declare function isAuthConfigured(): boolean;
 
-/**
- * JWT Utility Functions
- *
- * Provides safe JWT decoding for extracting claims from access tokens.
- * Note: This only decodes tokens - signature verification is done server-side.
- *
- * @see Story 2.6: User Menu & Logout UI
- */
 /**
  * Standard JWT payload claims we expect from our auth provider.
  * Extend this interface if additional claims are needed.
@@ -414,9 +445,16 @@ export declare function useAuth(): {
     user: ComputedRef<UserInfo | null>;
     userEmail: ComputedRef<string | null>;
     error: ComputedRef<AuthError | null>;
+    decodedToken: ComputedRef<DecodedAccessToken | null>;
+    userRoles: ComputedRef<string[]>;
+    userId: ComputedRef<string | null>;
+    userGuid: ComputedRef<string | null>;
+    username: ComputedRef<string | null>;
+    sessionId: ComputedRef<string | null>;
     login: (returnUrl?: string) => void;
     logout: () => Promise<void>;
     clearError: () => void;
+    hasRole: (role: string) => boolean;
 };
 
 /**
@@ -483,10 +521,10 @@ retryAfter?: number | undefined;
 } | null;
 } & PiniaCustomStateProperties<AuthState>) => boolean;
 /**
-* User email extracted from JWT access token.
-* Returns null if token is not available or email claim is missing.
+* Decoded JWT access token with all claims.
+* Returns null if token is not available or invalid.
 */
-userEmail: (state: {
+decodedToken: (state: {
 isAuthenticated: boolean;
 isLoading: boolean;
 user: {
@@ -503,8 +541,52 @@ type: AuthErrorType;
 message: string;
 retryAfter?: number | undefined;
 } | null;
-} & PiniaCustomStateProperties<AuthState>) => string | null;
+} & PiniaCustomStateProperties<AuthState>) => DecodedAccessToken | null;
+/**
+* User email extracted from JWT access token.
+* Returns null if token is not available or email claim is missing.
+*/
+userEmail(): string | null;
+/**
+* User roles from JWT access token.
+* Returns empty array if token is not available.
+*/
+userRoles(): string[];
+/**
+* User ID from JWT access token.
+* Returns null if token is not available.
+*/
+userId(): string | null;
+/**
+* User GUID from JWT access token.
+* Returns null if token is not available.
+*/
+userGuid(): string | null;
+/**
+* Username from JWT access token.
+* Returns null if token is not available.
+*/
+username(): string | null;
+/**
+* Session ID from JWT access token.
+* Returns null if token is not available.
+*/
+sessionId(): string | null;
 }, {
+/**
+* Check if user has a specific role.
+*
+* @param role - The role to check for
+* @returns true if user has the specified role
+*
+* @example
+* ```typescript
+* if (authStore.hasRole('ROLE_AFFILIATE_ADMIN')) {
+*   // Show admin features
+* }
+* ```
+*/
+hasRole(role: string): boolean;
 /**
 * Check if token needs refresh (within 60s of expiry)
 * ADR-006: 60 second buffer before expiry

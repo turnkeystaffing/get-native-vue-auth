@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { decodeJwt, extractEmailFromJwt } from '../jwt'
+import { decodeJwt, extractEmailFromJwt, decodeAccessToken } from '../jwt'
 
 // Mock the logger
 vi.mock('@turnkeystaffing/get-native-vue-logger', () => ({
@@ -171,6 +171,95 @@ describe('JWT Utilities', () => {
         const token = createTestToken({ email })
         expect(extractEmailFromJwt(token)).toBe(email)
       }
+    })
+  })
+
+  describe('decodeAccessToken', () => {
+    it('returns null for null input', () => {
+      expect(decodeAccessToken(null)).toBeNull()
+    })
+
+    it('returns null for undefined input', () => {
+      expect(decodeAccessToken(undefined)).toBeNull()
+    })
+
+    it('returns null for empty string', () => {
+      expect(decodeAccessToken('')).toBeNull()
+    })
+
+    it('returns null for invalid JWT format', () => {
+      expect(decodeAccessToken('not-a-jwt')).toBeNull()
+    })
+
+    it('returns null when email field is missing', () => {
+      const token = createTestToken({
+        user_id: 'user123',
+        roles: ['ROLE_USER']
+      })
+      expect(decodeAccessToken(token)).toBeNull()
+    })
+
+    it('returns null when user_id field is missing', () => {
+      const token = createTestToken({
+        email: 'test@example.com',
+        roles: ['ROLE_USER']
+      })
+      expect(decodeAccessToken(token)).toBeNull()
+    })
+
+    it('returns null when roles field is missing', () => {
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123'
+      })
+      expect(decodeAccessToken(token)).toBeNull()
+    })
+
+    it('returns null when email is not a string', () => {
+      const token = createTestToken({
+        email: 12345,
+        user_id: 'user123',
+        roles: ['ROLE_USER']
+      })
+      expect(decodeAccessToken(token)).toBeNull()
+    })
+
+    it('returns null when roles is not an array', () => {
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: 'ROLE_USER'
+      })
+      expect(decodeAccessToken(token)).toBeNull()
+    })
+
+    it('returns DecodedAccessToken when all required claims are present', () => {
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER', 'ROLE_ADMIN'],
+        username: 'testuser',
+        guid: 'guid-123',
+        session_id: 'session-456',
+        client_id: 'client-789',
+        iss: 'https://auth.example.com',
+        sub: 'sub-123',
+        aud: ['api'],
+        exp: 9999999999,
+        nbf: 1000000000,
+        iat: 1000000000,
+        jti: 'jti-123'
+      })
+
+      const decoded = decodeAccessToken(token)
+
+      expect(decoded).not.toBeNull()
+      expect(decoded?.email).toBe('test@example.com')
+      expect(decoded?.user_id).toBe('user123')
+      expect(decoded?.roles).toEqual(['ROLE_USER', 'ROLE_ADMIN'])
+      expect(decoded?.username).toBe('testuser')
+      expect(decoded?.guid).toBe('guid-123')
+      expect(decoded?.session_id).toBe('session-456')
     })
   })
 })

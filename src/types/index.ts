@@ -12,7 +12,8 @@ export type {
   AuthError,
   BackendAuthError,
   BackendTokenResponse,
-  LogoutResponse
+  LogoutResponse,
+  DecodedAccessToken
 } from './auth'
 
 export type { BffAuthPluginOptions, BffAuthConfig } from './config'

@@ -21,6 +21,23 @@ vi.mock('@turnkeystaffing/get-native-vue-logger', () => ({
   })
 }))
 
+/**
+ * Helper to create a valid JWT token with given payload.
+ * Note: This creates a token for testing decode only - signature is not verified.
+ */
+function createTestToken(payload: Record<string, unknown>): string {
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const headerBase64 = btoa(JSON.stringify(header))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  const payloadBase64 = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  return `${headerBase64}.${payloadBase64}.fake-signature`
+}
+
 // Mock auth service - preserve AuthConfigurationError for instanceof checks
 vi.mock('../../services/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../services/auth')>()
@@ -566,6 +583,169 @@ describe('AuthStore', () => {
         })
 
         expect(store.checkTokenNeedsRefresh()).toBe(true)
+      })
+    })
+
+    describe('decodedToken', () => {
+      it('returns null when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.decodedToken).toBeNull()
+      })
+
+      it('returns decoded token when valid JWT with required claims', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER', 'ROLE_ADMIN'],
+          username: 'testuser',
+          guid: 'guid-123',
+          session_id: 'session-456'
+        })
+        store.$patch({ accessToken: token })
+
+        const decoded = store.decodedToken
+
+        expect(decoded).not.toBeNull()
+        expect(decoded?.email).toBe('test@example.com')
+        expect(decoded?.user_id).toBe('user123')
+        expect(decoded?.roles).toEqual(['ROLE_USER', 'ROLE_ADMIN'])
+      })
+    })
+
+    describe('userRoles', () => {
+      it('returns empty array when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.userRoles).toEqual([])
+      })
+
+      it('returns roles array from valid token', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER', 'ROLE_ADMIN']
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.userRoles).toEqual(['ROLE_USER', 'ROLE_ADMIN'])
+      })
+    })
+
+    describe('userId', () => {
+      it('returns null when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.userId).toBeNull()
+      })
+
+      it('returns user_id from valid token', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER']
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.userId).toBe('user123')
+      })
+    })
+
+    describe('userGuid', () => {
+      it('returns null when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.userGuid).toBeNull()
+      })
+
+      it('returns guid from valid token', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER'],
+          guid: 'guid-abc-123'
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.userGuid).toBe('guid-abc-123')
+      })
+    })
+
+    describe('username', () => {
+      it('returns null when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.username).toBeNull()
+      })
+
+      it('returns username from valid token', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER'],
+          username: 'johndoe'
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.username).toBe('johndoe')
+      })
+    })
+
+    describe('sessionId', () => {
+      it('returns null when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.sessionId).toBeNull()
+      })
+
+      it('returns session_id from valid token', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER'],
+          session_id: 'session-xyz-789'
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.sessionId).toBe('session-xyz-789')
+      })
+    })
+
+    describe('hasRole', () => {
+      it('returns true when user has the role', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER', 'ROLE_ADMIN']
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.hasRole('ROLE_ADMIN')).toBe(true)
+      })
+
+      it('returns false when user does not have the role', () => {
+        const store = useAuthStore()
+        const token = createTestToken({
+          email: 'test@example.com',
+          user_id: 'user123',
+          roles: ['ROLE_USER']
+        })
+        store.$patch({ accessToken: token })
+
+        expect(store.hasRole('ROLE_ADMIN')).toBe(false)
+      })
+
+      it('returns false when no token', () => {
+        const store = useAuthStore()
+
+        expect(store.hasRole('ROLE_USER')).toBe(false)
       })
     })
   })

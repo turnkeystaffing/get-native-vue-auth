@@ -36,6 +36,23 @@ vi.mock('../../services/auth', () => ({
   }
 }))
 
+/**
+ * Helper to create a valid JWT token with given payload.
+ * Note: This creates a token for testing decode only - signature is not verified.
+ */
+function createTestToken(payload: Record<string, unknown>): string {
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const headerBase64 = btoa(JSON.stringify(header))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  const payloadBase64 = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  return `${headerBase64}.${payloadBase64}.fake-signature`
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -108,6 +125,94 @@ describe('useAuth', () => {
 
       expect(isAuthenticated.value).toBe(true)
     })
+
+    it('exposes decodedToken from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER']
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { decodedToken } = useAuth()
+
+      expect(decodedToken.value).not.toBeNull()
+      expect(decodedToken.value?.email).toBe('test@example.com')
+    })
+
+    it('exposes userRoles from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER', 'ROLE_ADMIN']
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { userRoles } = useAuth()
+
+      expect(userRoles.value).toEqual(['ROLE_USER', 'ROLE_ADMIN'])
+    })
+
+    it('exposes userId from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER']
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { userId } = useAuth()
+
+      expect(userId.value).toBe('user123')
+    })
+
+    it('exposes userGuid from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER'],
+        guid: 'guid-abc'
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { userGuid } = useAuth()
+
+      expect(userGuid.value).toBe('guid-abc')
+    })
+
+    it('exposes username from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER'],
+        username: 'johndoe'
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { username } = useAuth()
+
+      expect(username.value).toBe('johndoe')
+    })
+
+    it('exposes sessionId from store', () => {
+      const authStore = useAuthStore()
+      const token = createTestToken({
+        email: 'test@example.com',
+        user_id: 'user123',
+        roles: ['ROLE_USER'],
+        session_id: 'session-xyz'
+      })
+      authStore.$patch({ accessToken: token })
+
+      const { sessionId } = useAuth()
+
+      expect(sessionId.value).toBe('session-xyz')
+    })
   })
 
   describe('actions', () => {
@@ -163,6 +268,16 @@ describe('useAuth', () => {
 
       expect(clearErrorSpy).toHaveBeenCalled()
     })
+
+    it('hasRole calls store hasRole', () => {
+      const authStore = useAuthStore()
+      const hasRoleSpy = vi.spyOn(authStore, 'hasRole')
+
+      const { hasRole } = useAuth()
+      hasRole('ROLE_ADMIN')
+
+      expect(hasRoleSpy).toHaveBeenCalledWith('ROLE_ADMIN')
+    })
   })
 
   describe('return type', () => {
@@ -176,24 +291,49 @@ describe('useAuth', () => {
       expect(auth).toHaveProperty('login')
       expect(auth).toHaveProperty('logout')
       expect(auth).toHaveProperty('clearError')
+      expect(auth).toHaveProperty('decodedToken')
+      expect(auth).toHaveProperty('userRoles')
+      expect(auth).toHaveProperty('userId')
+      expect(auth).toHaveProperty('userGuid')
+      expect(auth).toHaveProperty('username')
+      expect(auth).toHaveProperty('sessionId')
+      expect(auth).toHaveProperty('hasRole')
     })
 
     it('returns computed refs for state properties', () => {
-      const { isAuthenticated, isLoading, user, error } = useAuth()
+      const {
+        isAuthenticated,
+        isLoading,
+        user,
+        error,
+        decodedToken,
+        userRoles,
+        userId,
+        userGuid,
+        username,
+        sessionId
+      } = useAuth()
 
       // Verify they are computed refs (have .value property)
       expect(isAuthenticated).toHaveProperty('value')
       expect(isLoading).toHaveProperty('value')
       expect(user).toHaveProperty('value')
       expect(error).toHaveProperty('value')
+      expect(decodedToken).toHaveProperty('value')
+      expect(userRoles).toHaveProperty('value')
+      expect(userId).toHaveProperty('value')
+      expect(userGuid).toHaveProperty('value')
+      expect(username).toHaveProperty('value')
+      expect(sessionId).toHaveProperty('value')
     })
 
     it('returns functions for action properties', () => {
-      const { login, logout, clearError } = useAuth()
+      const { login, logout, clearError, hasRole } = useAuth()
 
       expect(typeof login).toBe('function')
       expect(typeof logout).toBe('function')
       expect(typeof clearError).toBe('function')
+      expect(typeof hasRole).toBe('function')
     })
   })
 })

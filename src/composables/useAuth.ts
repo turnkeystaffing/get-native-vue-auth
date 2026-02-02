@@ -23,7 +23,7 @@
 
 import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import type { UserInfo, AuthError } from '../types/auth'
+import type { UserInfo, AuthError, DecodedAccessToken } from '../types/auth'
 
 /**
  * Auth composable for reactive auth state and actions
@@ -61,6 +61,52 @@ export function useAuth() {
   const userEmail = computed<string | null>(() => authStore.userEmail)
 
   /**
+   * Decoded JWT access token with all claims.
+   * Returns null if token is not available or invalid.
+   */
+  const decodedToken = computed<DecodedAccessToken | null>(() => authStore.decodedToken)
+
+  /**
+   * User roles from JWT access token.
+   * Returns empty array if token is not available.
+   */
+  const userRoles = computed<string[]>(() => authStore.userRoles)
+
+  /**
+   * User ID from JWT access token.
+   * Returns null if token is not available.
+   */
+  const userId = computed<string | null>(() => authStore.userId)
+
+  /**
+   * User GUID from JWT access token.
+   * Returns null if token is not available.
+   */
+  const userGuid = computed<string | null>(() => authStore.userGuid)
+
+  /**
+   * Username from JWT access token.
+   * Returns null if token is not available.
+   */
+  const username = computed<string | null>(() => authStore.username)
+
+  /**
+   * Session ID from JWT access token.
+   * Returns null if token is not available.
+   */
+  const sessionId = computed<string | null>(() => authStore.sessionId)
+
+  /**
+   * Check if user has a specific role.
+   *
+   * @param role - The role to check for
+   * @returns true if user has the specified role
+   */
+  function hasRole(role: string): boolean {
+    return authStore.hasRole(role)
+  }
+
+  /**
    * Initiate login flow - redirects to Central Login
    *
    * @param returnUrl - URL to return to after authentication
@@ -91,10 +137,19 @@ export function useAuth() {
     userEmail,
     error,
 
+    // Decoded token getters
+    decodedToken,
+    userRoles,
+    userId,
+    userGuid,
+    username,
+    sessionId,
+
     // Actions
     login,
     logout,
-    clearError
+    clearError,
+    hasRole
   }
 }
 

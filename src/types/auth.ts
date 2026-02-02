@@ -83,3 +83,24 @@ export interface BackendTokenResponse {
 export interface LogoutResponse {
   success: boolean
 }
+
+/**
+ * Decoded JWT access token claims from our auth provider.
+ * Contains user identity, roles, and standard JWT claims.
+ */
+export interface DecodedAccessToken {
+  username: string
+  email: string
+  roles: string[]
+  guid: string
+  user_id: string
+  session_id: string
+  client_id: string
+  iss: string
+  sub: string
+  aud: string[]
+  exp: number
+  nbf: number
+  iat: number
+  jti: string
+}

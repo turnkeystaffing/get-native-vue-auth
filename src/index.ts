@@ -47,7 +47,7 @@ export { setupAuthGuard, createAuthGuard } from './router/guards'
 export type { AuthGuardDependencies } from './router/guards'
 
 // JWT utilities
-export { decodeJwt, extractEmailFromJwt } from './utils/jwt'
+export { decodeJwt, extractEmailFromJwt, decodeAccessToken } from './utils/jwt'
 export type { JwtPayload } from './utils/jwt'
 
 // Types
@@ -60,6 +60,7 @@ export type {
   BackendAuthError,
   BackendTokenResponse,
   LogoutResponse,
+  DecodedAccessToken,
   BffAuthPluginOptions,
   BffAuthConfig
 } from './types'
