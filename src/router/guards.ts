@@ -99,6 +99,11 @@ export function createAuthGuard(
     const authSvc = deps.getAuthService()
 
     try {
+      // Public routes bypass auth check entirely
+      if (isPublicRoute(to)) {
+        return true
+      }
+
       // Initialize auth on first navigation (only once per guard instance)
       if (!initialized) {
         initialized = true
@@ -108,11 +113,6 @@ export function createAuthGuard(
           logger.error('Failed to initialize auth:', error)
           // Continue - user will be treated as unauthenticated
         }
-      }
-
-      // Public routes bypass auth check entirely
-      if (isPublicRoute(to)) {
-        return true
       }
 
       // Wait for any pending auth operations to complete

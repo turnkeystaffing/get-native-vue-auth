@@ -581,6 +581,8 @@ function Ie(e = Ue) {
   return async (r) => {
     const n = e.getAuthStore(), i = e.getAuthService();
     try {
+      if (Te(r))
+        return !0;
       if (!t) {
         t = !0;
         try {
@@ -589,7 +591,7 @@ function Ie(e = Ue) {
           P.error("Failed to initialize auth:", f);
         }
       }
-      return Te(r) ? !0 : await Se(n) ? n.isAuthenticated ? !0 : (i.login({ returnUrl: r.fullPath }), !1) : (P.warn("Auth not ready, redirecting to login"), i.login({ returnUrl: r.fullPath }), !1);
+      return await Se(n) ? n.isAuthenticated ? !0 : (i.login({ returnUrl: r.fullPath }), !1) : (P.warn("Auth not ready, redirecting to login"), i.login({ returnUrl: r.fullPath }), !1);
     } catch (s) {
       return s instanceof k ? (P.error("Auth configuration error:", s.message), n.setError({
         type: "service_unavailable",

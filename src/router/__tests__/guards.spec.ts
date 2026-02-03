@@ -291,11 +291,9 @@ describe('Auth Guards', () => {
       consoleSpy.mockRestore()
     })
 
-    it('allows public routes even when initAuth throws', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('allows public routes without calling initAuth', async () => {
       const { deps, mocks } = createMockDeps({
-        isAuthenticated: false,
-        initAuth: vi.fn().mockRejectedValue(new Error('Network error'))
+        isAuthenticated: false
       })
 
       router.beforeEach(createAuthGuard(deps))
@@ -303,7 +301,7 @@ describe('Auth Guards', () => {
 
       expect(router.currentRoute.value.path).toBe('/public')
       expect(mocks.service.login).not.toHaveBeenCalled()
-      consoleSpy.mockRestore()
+      expect(mocks.store.initAuth).not.toHaveBeenCalled()
     })
 
     it('redirects to login when auth times out (stuck loading)', async () => {
@@ -327,6 +325,38 @@ describe('Auth Guards', () => {
 
       vi.useRealTimers()
       consoleSpy.mockRestore()
+    })
+  })
+
+  describe('public route skips initAuth', () => {
+    it('does not call initAuth for public routes', async () => {
+      const { deps, mocks } = createMockDeps({ isAuthenticated: false })
+
+      router.beforeEach(createAuthGuard(deps))
+      await router.push('/public')
+
+      expect(router.currentRoute.value.path).toBe('/public')
+      expect(mocks.store.initAuth).not.toHaveBeenCalled()
+    })
+
+    it('calls initAuth when first protected route is visited after public route', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        initAuth: async () => {
+          mocks.store.isAuthenticated = true
+        }
+      })
+
+      router.beforeEach(createAuthGuard(deps))
+
+      // Public route first — no initAuth
+      await router.push('/public')
+      expect(mocks.store.initAuth).not.toHaveBeenCalled()
+
+      // Protected route — triggers initAuth
+      await router.push('/protected')
+      expect(mocks.store.initAuth).toHaveBeenCalledTimes(1)
+      expect(router.currentRoute.value.path).toBe('/protected')
     })
   })
 
