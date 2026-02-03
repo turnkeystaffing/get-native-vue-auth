@@ -62,7 +62,10 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import SessionExpiredModal from '../SessionExpiredModal.vue'
 import { useAuthStore } from '../../stores/auth'
+import { BFF_AUTH_CONFIG_KEY } from '../../config'
+import { DEFAULT_ICONS } from '../../plugin'
 import type { AuthError } from '../../types/auth'
+import type { BffAuthConfig } from '../../types/config'
 
 // Create Vuetify instance
 const vuetify = createVuetify({
@@ -122,17 +125,32 @@ describe('SessionExpiredModal', () => {
     document.body.innerHTML = ''
   })
 
+  /** Default mock config for providing BFF_AUTH_CONFIG_KEY */
+  const defaultMockConfig: BffAuthConfig = {
+    bffBaseUrl: 'https://bff.example.com',
+    clientId: 'test-app',
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as unknown as BffAuthConfig['logger'],
+    icons: { ...DEFAULT_ICONS }
+  }
+
   /**
    * Mount helper with common configuration
    */
-  function mountComponent(errorState: AuthError | null = null) {
+  function mountComponent(errorState: AuthError | null = null, configOverrides?: Partial<BffAuthConfig>) {
     // Set up store state before mounting
     const pinia = createPinia()
     setActivePinia(pinia)
 
+    const mockConfig = configOverrides
+      ? { ...defaultMockConfig, ...configOverrides }
+      : defaultMockConfig
+
     wrapper = mount(SessionExpiredModal, {
       global: {
-        plugins: [vuetify, pinia]
+        plugins: [vuetify, pinia],
+        provide: {
+          [BFF_AUTH_CONFIG_KEY as symbol]: mockConfig
+        }
       },
       attachTo: document.getElementById('app') || undefined
     })
@@ -387,6 +405,71 @@ describe('SessionExpiredModal', () => {
 
       // After click, button should be disabled (loading state)
       expect(signInBtn.hasAttribute('disabled')).toBe(true)
+    })
+  })
+
+  describe('Configurable Icons', () => {
+    it('renders custom icons when overridden via config', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        sessionExpired: 'fa-solid fa-clock',
+        login: 'fa-solid fa-right-to-bracket'
+      }
+      mountComponent(
+        { type: 'session_expired', message: 'Session expired' },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const dialogContent = document.body.innerHTML
+      expect(dialogContent).toContain('fa-solid fa-clock')
+      expect(dialogContent).toContain('fa-solid fa-right-to-bracket')
+      expect(dialogContent).not.toContain('mdi-clock-alert-outline')
+      expect(dialogContent).not.toContain('mdi-login')
+    })
+
+    it('renders default MDI icons when no overrides provided', async () => {
+      mountComponent({ type: 'session_expired', message: 'Session expired' })
+      await flushPromises()
+
+      const dialogContent = document.body.innerHTML
+      expect(dialogContent).toContain('mdi-clock-alert-outline')
+      expect(dialogContent).toContain('mdi-login')
+    })
+
+    it('does not render session expired icon when set to false', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        sessionExpired: false as const
+      }
+      mountComponent(
+        { type: 'session_expired', message: 'Session expired' },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const dialogContent = document.body.innerHTML
+      expect(dialogContent).not.toContain('mdi-clock-alert-outline')
+      // Title text should still be present
+      const titleElement = document.body.querySelector('#session-expired-title')
+      expect(titleElement?.textContent).toContain('Session Expired')
+    })
+
+    it('does not render login prepend icon when set to false', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        login: false as const
+      }
+      mountComponent(
+        { type: 'session_expired', message: 'Session expired' },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const signInBtn = document.body.querySelector('[data-testid="session-expired-sign-in-button"]')
+      expect(signInBtn).toBeTruthy()
+      const dialogContent = document.body.innerHTML
+      expect(dialogContent).not.toContain('mdi-login')
     })
   })
 

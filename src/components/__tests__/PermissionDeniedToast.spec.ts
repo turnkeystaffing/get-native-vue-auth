@@ -62,7 +62,10 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import PermissionDeniedToast from '../PermissionDeniedToast.vue'
 import { useAuthStore } from '../../stores/auth'
+import { BFF_AUTH_CONFIG_KEY } from '../../config'
+import { DEFAULT_ICONS } from '../../plugin'
 import type { AuthError } from '../../types/auth'
+import type { BffAuthConfig } from '../../types/config'
 
 // Create Vuetify instance
 const vuetify = createVuetify({
@@ -116,17 +119,32 @@ describe('PermissionDeniedToast', () => {
     document.body.innerHTML = ''
   })
 
+  /** Default mock config for providing BFF_AUTH_CONFIG_KEY */
+  const defaultMockConfig: BffAuthConfig = {
+    bffBaseUrl: 'https://bff.example.com',
+    clientId: 'test-app',
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as unknown as BffAuthConfig['logger'],
+    icons: { ...DEFAULT_ICONS }
+  }
+
   /**
    * Mount helper with common configuration
    */
-  function mountComponent(errorState: AuthError | null = null) {
+  function mountComponent(errorState: AuthError | null = null, configOverrides?: Partial<BffAuthConfig>) {
     // Set up store state before mounting
     const pinia = createPinia()
     setActivePinia(pinia)
 
+    const mockConfig = configOverrides
+      ? { ...defaultMockConfig, ...configOverrides }
+      : defaultMockConfig
+
     wrapper = mount(PermissionDeniedToast, {
       global: {
-        plugins: [vuetify, pinia]
+        plugins: [vuetify, pinia],
+        provide: {
+          [BFF_AUTH_CONFIG_KEY as symbol]: mockConfig
+        }
       },
       attachTo: document.getElementById('app') || undefined
     })
@@ -479,6 +497,50 @@ describe('PermissionDeniedToast', () => {
 
       const toastContent = document.body.querySelector('[data-testid="permission-denied-toast"]')
       expect(toastContent?.textContent).toContain('You do not have permission to perform this action.')
+    })
+  })
+
+  describe('Configurable Icons', () => {
+    it('renders custom icon when overridden via config', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        permissionDenied: 'fa-solid fa-shield-halved'
+      }
+      mountComponent(
+        { type: 'permission_denied', message: 'Access denied' },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const toastContent = document.body.innerHTML
+      expect(toastContent).toContain('fa-solid fa-shield-halved')
+      expect(toastContent).not.toContain('mdi-shield-alert')
+    })
+
+    it('renders default MDI icon when no overrides provided', async () => {
+      mountComponent({ type: 'permission_denied', message: 'Access denied' })
+      await flushPromises()
+
+      const toastContent = document.body.innerHTML
+      expect(toastContent).toContain('mdi-shield-alert')
+    })
+
+    it('does not render icon when set to false', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        permissionDenied: false as const
+      }
+      mountComponent(
+        { type: 'permission_denied', message: 'Access denied' },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const toastContent = document.body.innerHTML
+      expect(toastContent).not.toContain('mdi-shield-alert')
+      // Message should still be present
+      const snackbarContent = document.body.querySelector('[data-testid="permission-denied-toast"]')
+      expect(snackbarContent?.textContent).toContain('Access denied')
     })
   })
 

@@ -62,8 +62,11 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import ServiceUnavailableOverlay from '../ServiceUnavailableOverlay.vue'
 import { useAuthStore } from '../../stores/auth'
+import { BFF_AUTH_CONFIG_KEY } from '../../config'
+import { DEFAULT_ICONS } from '../../plugin'
 import { authService } from '../../services/auth'
 import type { AuthError } from '../../types/auth'
+import type { BffAuthConfig } from '../../types/config'
 
 // Create Vuetify instance
 const vuetify = createVuetify({
@@ -117,17 +120,32 @@ describe('ServiceUnavailableOverlay', () => {
     document.body.innerHTML = ''
   })
 
+  /** Default mock config for providing BFF_AUTH_CONFIG_KEY */
+  const defaultMockConfig: BffAuthConfig = {
+    bffBaseUrl: 'https://bff.example.com',
+    clientId: 'test-app',
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as unknown as BffAuthConfig['logger'],
+    icons: { ...DEFAULT_ICONS }
+  }
+
   /**
    * Mount helper with common configuration
    */
-  function mountComponent(errorState: AuthError | null = null) {
+  function mountComponent(errorState: AuthError | null = null, configOverrides?: Partial<BffAuthConfig>) {
     // Set up store state before mounting
     const pinia = createPinia()
     setActivePinia(pinia)
 
+    const mockConfig = configOverrides
+      ? { ...defaultMockConfig, ...configOverrides }
+      : defaultMockConfig
+
     wrapper = mount(ServiceUnavailableOverlay, {
       global: {
-        plugins: [vuetify, pinia]
+        plugins: [vuetify, pinia],
+        provide: {
+          [BFF_AUTH_CONFIG_KEY as symbol]: mockConfig
+        }
       },
       attachTo: document.getElementById('app') || undefined
     })
@@ -674,6 +692,71 @@ describe('ServiceUnavailableOverlay', () => {
 
       // Should call authService.checkAuth(), not any store method
       expect(checkAuthSpy).toHaveBeenCalled()
+    })
+  })
+
+  describe('Configurable Icons', () => {
+    it('renders custom icons when overridden via config', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        serviceUnavailable: 'fa-solid fa-cloud',
+        retry: 'fa-solid fa-rotate-right'
+      }
+      mountComponent(
+        { type: 'service_unavailable', message: 'Service down', retryAfter: 30 },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const overlayContent = document.body.innerHTML
+      expect(overlayContent).toContain('fa-solid fa-cloud')
+      expect(overlayContent).toContain('fa-solid fa-rotate-right')
+      expect(overlayContent).not.toContain('mdi-cloud-off-outline')
+      expect(overlayContent).not.toContain('mdi-refresh')
+    })
+
+    it('renders default MDI icons when no overrides provided', async () => {
+      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+      await flushPromises()
+
+      const overlayContent = document.body.innerHTML
+      expect(overlayContent).toContain('mdi-cloud-off-outline')
+      expect(overlayContent).toContain('mdi-refresh')
+    })
+
+    it('does not render service unavailable icon when set to false', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        serviceUnavailable: false as const
+      }
+      mountComponent(
+        { type: 'service_unavailable', message: 'Service down', retryAfter: 30 },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const overlayContent = document.body.innerHTML
+      expect(overlayContent).not.toContain('mdi-cloud-off-outline')
+      // Title text should still be present
+      const titleElement = document.body.querySelector('#service-unavailable-title')
+      expect(titleElement?.textContent).toContain('Service Issue')
+    })
+
+    it('does not render retry prepend icon when set to false', async () => {
+      const customIcons = {
+        ...DEFAULT_ICONS,
+        retry: false as const
+      }
+      mountComponent(
+        { type: 'service_unavailable', message: 'Service down', retryAfter: 30 },
+        { icons: customIcons }
+      )
+      await flushPromises()
+
+      const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]')
+      expect(tryNowBtn).toBeTruthy()
+      const overlayContent = document.body.innerHTML
+      expect(overlayContent).not.toContain('mdi-refresh')
     })
   })
 

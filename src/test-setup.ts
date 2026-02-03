@@ -47,6 +47,13 @@ const testConfig: BffAuthConfig = {
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn()
-  } as any
+  } as any,
+  icons: {
+    sessionExpired: 'mdi-clock-alert-outline',
+    login: 'mdi-login',
+    permissionDenied: 'mdi-shield-alert',
+    serviceUnavailable: 'mdi-cloud-off-outline',
+    retry: 'mdi-refresh'
+  }
 }
 setGlobalConfig(testConfig)

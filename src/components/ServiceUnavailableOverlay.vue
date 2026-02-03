@@ -13,6 +13,7 @@
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { VOverlay, VCard, VCardTitle, VCardText, VCardActions, VIcon, VProgressLinear, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
+import { useAuthConfig } from '../config'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
@@ -20,6 +21,7 @@ import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 defineOptions({ name: 'ServiceUnavailableOverlay' })
 
 const logger = createLogger('ServiceUnavailableOverlay')
+const config = useAuthConfig()
 const { error } = useAuth()
 const authStore = useAuthStore()
 
@@ -181,7 +183,7 @@ onUnmounted(() => {
         id="service-unavailable-title"
         class="text-h5 d-flex align-center justify-center"
       >
-        <v-icon color="error" size="32" class="mr-2">mdi-cloud-off-outline</v-icon>
+        <v-icon v-if="config.icons.serviceUnavailable" color="error" size="32" class="mr-2">{{ config.icons.serviceUnavailable }}</v-icon>
         Service Issue
       </v-card-title>
 
@@ -213,7 +215,7 @@ onUnmounted(() => {
         <v-btn
           color="primary"
           variant="elevated"
-          prepend-icon="mdi-refresh"
+          :prepend-icon="config.icons.retry || undefined"
           :loading="isRetrying"
           :disabled="isRetrying"
           data-testid="try-now-button"

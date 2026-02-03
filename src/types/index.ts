@@ -16,4 +16,4 @@ export type {
   DecodedAccessToken
 } from './auth'
 
-export type { BffAuthPluginOptions, BffAuthConfig } from './config'
+export type { BffAuthPluginOptions, BffAuthConfig, AuthIcons } from './config'

@@ -13,11 +13,13 @@
 import { computed } from 'vue'
 import { VSnackbar, VIcon, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
+import { useAuthConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 defineOptions({ name: 'PermissionDeniedToast' })
 
 const logger = createLogger('PermissionDeniedToast')
+const config = useAuthConfig()
 const { error, clearError } = useAuth()
 
 /** Timeout in milliseconds (5 seconds as per AC3) */
@@ -71,7 +73,7 @@ function handleClose() {
     aria-live="polite"
   >
     <div class="d-flex align-center">
-      <v-icon class="mr-2">mdi-shield-alert</v-icon>
+      <v-icon v-if="config.icons.permissionDenied" class="mr-2">{{ config.icons.permissionDenied }}</v-icon>
       <span>{{ errorMessage }}</span>
     </div>
     <template #actions>

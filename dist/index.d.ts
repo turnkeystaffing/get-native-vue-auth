@@ -49,6 +49,25 @@ export declare interface AuthGuardDependencies {
 }
 
 /**
+ * Icon configuration for auth UI components
+ *
+ * Override any or all icons to use a different icon library (e.g. Font Awesome).
+ * Defaults to MDI (Material Design Icons) strings.
+ */
+export declare interface AuthIcons {
+    /** Icon for session expired title (default: 'mdi-clock-alert-outline', false to disable) */
+    sessionExpired: string | false;
+    /** Icon for login/sign-in button (default: 'mdi-login', false to disable) */
+    login: string | false;
+    /** Icon for permission denied toast (default: 'mdi-shield-alert', false to disable) */
+    permissionDenied: string | false;
+    /** Icon for service unavailable title (default: 'mdi-cloud-off-outline', false to disable) */
+    serviceUnavailable: string | false;
+    /** Icon for retry button (default: 'mdi-refresh', false to disable) */
+    retry: string | false;
+}
+
+/**
  * Auth Service Client for BFF endpoints
  */
 export declare class AuthService {
@@ -176,6 +195,8 @@ export declare interface BffAuthConfig {
     clientId: string;
     /** Logger instance */
     logger: Logger;
+    /** Resolved icon configuration */
+    icons: AuthIcons;
 }
 
 /**
@@ -196,6 +217,8 @@ export declare interface BffAuthPluginOptions {
     clientId: string;
     /** Custom logger instance - optional, uses default logger if not provided */
     logger?: Logger;
+    /** Custom icons - optional, partial overrides merged with MDI defaults */
+    icons?: Partial<AuthIcons>;
 }
 
 /**
@@ -283,6 +306,13 @@ export declare interface DecodedAccessToken {
  * ```
  */
 export declare function decodeJwt(token: string | null | undefined): JwtPayload | null;
+
+/**
+ * Default icon strings (MDI - Material Design Icons)
+ *
+ * Consumers can override any/all via the `icons` plugin option.
+ */
+export declare const DEFAULT_ICONS: AuthIcons;
 
 /**
  * Extract the email claim from a JWT token.

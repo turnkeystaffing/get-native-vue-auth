@@ -229,6 +229,36 @@ const email = extractEmailFromJwt(accessToken)
 | `bffBaseUrl` | `string` | Yes | Base URL of the BFF server |
 | `clientId` | `string` | Yes | OAuth client ID |
 | `logger` | `Logger` | No | Custom logger instance |
+| `icons` | `Partial<AuthIcons>` | No | Override or disable component icons |
+
+### Custom Icons
+
+Override default MDI icons with any icon library, or set to `false` to disable individual icons:
+
+```typescript
+app.use(bffAuthPlugin, {
+  bffBaseUrl: 'https://api.example.com',
+  clientId: 'my-app',
+  icons: {
+    // Use Font Awesome instead of MDI
+    sessionExpired: 'fa-solid fa-clock',
+    login: 'fa-solid fa-right-to-bracket',
+    // Disable specific icons entirely
+    permissionDenied: false,
+    retry: false
+  }
+})
+```
+
+| Icon | Default | Used In |
+|------|---------|---------|
+| `sessionExpired` | `mdi-clock-alert-outline` | SessionExpiredModal title |
+| `login` | `mdi-login` | SessionExpiredModal sign-in button |
+| `permissionDenied` | `mdi-shield-alert` | PermissionDeniedToast |
+| `serviceUnavailable` | `mdi-cloud-off-outline` | ServiceUnavailableOverlay title |
+| `retry` | `mdi-refresh` | ServiceUnavailableOverlay try-now button |
+
+Each icon accepts a `string` (icon class name) or `false` (disables the icon).
 
 ### Route Meta
 
@@ -306,7 +336,7 @@ interface AuthError {
 - `ServiceUnavailableOverlay` - Service unavailable overlay
 
 ### Types
-- `UserInfo`, `AuthError`, `AuthErrorType`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
+- `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
 
 ## License
 

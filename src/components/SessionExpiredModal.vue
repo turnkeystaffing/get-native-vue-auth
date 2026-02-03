@@ -13,11 +13,13 @@
 import { computed, ref } from 'vue'
 import { VDialog, VCard, VCardTitle, VCardText, VCardActions, VIcon, VSpacer, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
+import { useAuthConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 defineOptions({ name: 'SessionExpiredModal' })
 
 const logger = createLogger('SessionExpiredModal')
+const config = useAuthConfig()
 const { error, login } = useAuth()
 
 /** Loading state to prevent double-click during redirect */
@@ -79,7 +81,7 @@ function handleSignIn() {
         id="session-expired-title"
         class="text-h5 d-flex align-center"
       >
-        <v-icon color="warning" class="mr-2">mdi-clock-alert-outline</v-icon>
+        <v-icon v-if="config.icons.sessionExpired" color="warning" class="mr-2">{{ config.icons.sessionExpired }}</v-icon>
         Session Expired
       </v-card-title>
 
@@ -92,7 +94,7 @@ function handleSignIn() {
         <v-btn
           color="primary"
           variant="elevated"
-          prepend-icon="mdi-login"
+          :prepend-icon="config.icons.login || undefined"
           :loading="isLoading"
           :disabled="isLoading"
           data-testid="session-expired-sign-in-button"

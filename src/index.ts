@@ -13,7 +13,7 @@
  */
 
 // Plugin
-export { bffAuthPlugin } from './plugin'
+export { bffAuthPlugin, DEFAULT_ICONS } from './plugin'
 
 // Config
 export { useAuthConfig, BFF_AUTH_CONFIG_KEY, getGlobalConfig, setGlobalConfig } from './config'
@@ -62,7 +62,8 @@ export type {
   LogoutResponse,
   DecodedAccessToken,
   BffAuthPluginOptions,
-  BffAuthConfig
+  BffAuthConfig,
+  AuthIcons
 } from './types'
 
 // Components
