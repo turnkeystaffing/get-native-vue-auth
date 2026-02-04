@@ -37,3 +37,7 @@ coverage/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# AI
+.claude/
+_bmad/
