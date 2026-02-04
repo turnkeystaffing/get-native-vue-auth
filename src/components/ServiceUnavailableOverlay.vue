@@ -183,13 +183,27 @@ onUnmounted(() => {
         id="service-unavailable-title"
         class="text-h5 d-flex align-center justify-center"
       >
-        <v-icon v-if="config.icons.serviceUnavailable" color="error" size="32" class="mr-2">{{ config.icons.serviceUnavailable }}</v-icon>
+        <v-icon
+          v-if="config.icons.serviceUnavailable"
+          color="error"
+          size="32"
+          class="mr-2"
+        >
+          {{ config.icons.serviceUnavailable }}
+        </v-icon>
         Service Issue
       </v-card-title>
 
-      <v-card-text id="service-unavailable-message" class="text-center">
-        <p class="text-body-1 mb-4">{{ errorMessage }}</p>
-        <p class="text-body-2 text-medium-emphasis mb-4">Retrying automatically...</p>
+      <v-card-text
+        id="service-unavailable-message"
+        class="text-center"
+      >
+        <p class="text-body-1 mb-4">
+          {{ errorMessage }}
+        </p>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Retrying automatically...
+        </p>
 
         <!-- Countdown Progress Bar -->
         <v-progress-linear

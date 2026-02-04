@@ -81,7 +81,13 @@ function handleSignIn() {
         id="session-expired-title"
         class="text-h5 d-flex align-center"
       >
-        <v-icon v-if="config.icons.sessionExpired" color="warning" class="mr-2">{{ config.icons.sessionExpired }}</v-icon>
+        <v-icon
+          v-if="config.icons.sessionExpired"
+          color="warning"
+          class="mr-2"
+        >
+          {{ config.icons.sessionExpired }}
+        </v-icon>
         Session Expired
       </v-card-title>
 

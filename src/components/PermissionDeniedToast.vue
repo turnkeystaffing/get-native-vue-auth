@@ -73,7 +73,12 @@ function handleClose() {
     aria-live="polite"
   >
     <div class="d-flex align-center">
-      <v-icon v-if="config.icons.permissionDenied" class="mr-2">{{ config.icons.permissionDenied }}</v-icon>
+      <v-icon
+        v-if="config.icons.permissionDenied"
+        class="mr-2"
+      >
+        {{ config.icons.permissionDenied }}
+      </v-icon>
       <span>{{ errorMessage }}</span>
     </div>
     <template #actions>
