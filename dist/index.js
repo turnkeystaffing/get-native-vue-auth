@@ -888,7 +888,7 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
             }, {
               default: l(() => [
                 P("p", Fe, k(v.value), 1),
-                m[1] || (m[1] = P("p", { class: "text-body-2 text-medium-emphasis mb-4" }, "Retrying automatically...", -1)),
+                m[1] || (m[1] = P("p", { class: "text-body-2 text-medium-emphasis mb-4" }, " Retrying automatically... ", -1)),
                 g(o(me), {
                   "model-value": B.value,
                   color: "primary",
