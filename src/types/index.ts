@@ -13,7 +13,12 @@ export type {
   BackendAuthError,
   BackendTokenResponse,
   LogoutResponse,
-  DecodedAccessToken
+  DecodedAccessToken,
+  TwoFactorErrorCode,
+  TwoFactorSetupResponse,
+  TwoFactorVerifyResponse,
+  TwoFactorResendResponse,
+  TwoFactorErrorResponse
 } from './auth'
 
 export type { BffAuthPluginOptions, BffAuthConfig, AuthIcons } from './config'

@@ -22,7 +22,10 @@ import type {
   AuthErrorType,
   BackendAuthError,
   BackendTokenResponse,
-  LogoutResponse
+  LogoutResponse,
+  TwoFactorSetupResponse,
+  TwoFactorVerifyResponse,
+  TwoFactorResendResponse
 } from '../types/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { getGlobalConfig } from '../config'
@@ -107,6 +110,7 @@ export function parseAuthError(error: AxiosError<BackendAuthError>): AuthError |
 export interface LoginCredentials {
   email: string
   password: string
+  authCode?: string
 }
 
 /**
@@ -140,15 +144,22 @@ class AuthService {
    *
    * @param email - User email address
    * @param password - User password
+   * @param authCode - Optional TOTP code for 2FA authentication
    * @returns Promise that resolves on success, rejects on error
    * @throws AxiosError with status 401 for invalid credentials
+   * @throws AxiosError with status 401 with detail '2fa_setup_required' when 2FA setup is needed
+   * @throws AxiosError with status 401 with detail '2fa_code_required' when TOTP code is needed
    * @throws AxiosError with status 503 for service unavailable
    */
-  async submitCredentials(email: string, password: string): Promise<void> {
+  async submitCredentials(email: string, password: string, authCode?: string): Promise<void> {
     try {
+      const payload: Record<string, string> = { email, password }
+      if (authCode !== undefined) {
+        payload.authCode = authCode
+      }
       await axios.post(
         `${getBffBaseUrl()}/api/v1/oauth/login`,
-        { email, password },
+        payload,
         { withCredentials: true } // Include cookies for session handling
       )
       logger.info('Credentials submitted successfully')
@@ -348,6 +359,82 @@ class AuthService {
         }
       }
       // Rethrow unknown errors
+      throw error
+    }
+  }
+
+  /**
+   * Initiate 2FA setup for a user
+   * POSTs to /api/v1/auth/2fa/setup with a setup token.
+   *
+   * @param token - 2FA setup token from the backend
+   * @returns TwoFactorSetupResponse with QR code and secret
+   * @throws AxiosError with detail 'token_expired' if token has expired
+   * @throws AxiosError with detail 'token_invalid' if token is invalid
+   * @throws AxiosError with detail 'token_used' if token was already used
+   * @security Response contains `secret` and `qr_code` — do not log, persist to storage, or send to error reporting
+   */
+  async setup2FA(token: string): Promise<TwoFactorSetupResponse> {
+    try {
+      const response = await axios.post<TwoFactorSetupResponse>(
+        `${getBffBaseUrl()}/api/v1/auth/2fa/setup`,
+        { token },
+        { withCredentials: true }
+      )
+      logger.info('2FA setup initiated successfully')
+      return response.data
+    } catch (error) {
+      logger.error('Failed to initiate 2FA setup', error)
+      throw error
+    }
+  }
+
+  /**
+   * Verify 2FA setup with a TOTP code
+   * POSTs to /api/v1/auth/2fa/verify-setup with token and TOTP code.
+   *
+   * @param token - 2FA setup token
+   * @param totpCode - TOTP code from authenticator app
+   * @returns TwoFactorVerifyResponse with backup codes
+   * @throws AxiosError with detail 'invalid totp code' if TOTP code is incorrect
+   * @throws AxiosError with detail 'token_expired' if token has expired
+   * @throws AxiosError with detail 'token_invalid' if token is invalid
+   * @security Response contains `backup_codes` — do not log, persist to storage, or send to error reporting
+   */
+  async verify2FASetup(token: string, totpCode: string): Promise<TwoFactorVerifyResponse> {
+    try {
+      const response = await axios.post<TwoFactorVerifyResponse>(
+        `${getBffBaseUrl()}/api/v1/auth/2fa/verify-setup`,
+        { token, totp_code: totpCode },
+        { withCredentials: true }
+      )
+      logger.info('2FA setup verified successfully')
+      return response.data
+    } catch (error) {
+      logger.error('Failed to verify 2FA setup', error)
+      throw error
+    }
+  }
+
+  /**
+   * Resend 2FA setup email
+   * POSTs to /api/v1/auth/2fa/resend-setup-email with user email.
+   *
+   * @param email - User email address
+   * @returns TwoFactorResendResponse with confirmation message
+   * @throws AxiosError on failure (e.g., email not found, rate limited)
+   */
+  async resend2FASetupEmail(email: string): Promise<TwoFactorResendResponse> {
+    try {
+      const response = await axios.post<TwoFactorResendResponse>(
+        `${getBffBaseUrl()}/api/v1/auth/2fa/resend-setup-email`,
+        { email },
+        { withCredentials: true }
+      )
+      logger.info('2FA setup email resent successfully')
+      return response.data
+    } catch (error) {
+      logger.error('Failed to resend 2FA setup email', error)
       throw error
     }
   }

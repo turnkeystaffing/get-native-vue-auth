@@ -376,7 +376,7 @@ describe('AuthService', () => {
   })
 
   describe('submitCredentials', () => {
-    it('posts credentials to BFF login endpoint', async () => {
+    it('posts credentials to BFF login endpoint without authCode when not provided', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: {} })
 
       await authService.submitCredentials('test@example.com', 'password123')
@@ -386,6 +386,28 @@ describe('AuthService', () => {
         { email: 'test@example.com', password: 'password123' },
         { withCredentials: true }
       )
+      const payload = mockedAxios.post.mock.calls[0][1]
+      expect(payload).not.toHaveProperty('authCode')
+    })
+
+    it('includes authCode in payload when provided', async () => {
+      mockedAxios.post.mockResolvedValueOnce({ data: {} })
+
+      await authService.submitCredentials('test@example.com', 'pass', '123456')
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/oauth/login'),
+        { email: 'test@example.com', password: 'pass', authCode: '123456' },
+        { withCredentials: true }
+      )
+    })
+
+    it('resolves on 200 OK response with authCode provided', async () => {
+      mockedAxios.post.mockResolvedValueOnce({ data: {} })
+
+      await expect(
+        authService.submitCredentials('test@example.com', 'password123', '123456')
+      ).resolves.toBeUndefined()
     })
 
     it('resolves on 200 OK response', async () => {
@@ -409,6 +431,40 @@ describe('AuthService', () => {
       ).rejects.toThrow()
     })
 
+    it('throws error with 2fa_setup_required detail', async () => {
+      const axiosError = new Error('Unauthorized') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 401, data: { detail: '2fa_setup_required' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.submitCredentials('test@example.com', 'password123')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.status).toBe(401)
+        expect(error.response.data.detail).toBe('2fa_setup_required')
+      }
+    })
+
+    it('throws error with 2fa_code_required detail', async () => {
+      const axiosError = new Error('Unauthorized') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 401, data: { detail: '2fa_code_required' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.submitCredentials('test@example.com', 'password123')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.status).toBe(401)
+        expect(error.response.data.detail).toBe('2fa_code_required')
+      }
+    })
+
     it('throws error on 503 response (service unavailable)', async () => {
       const axiosError = new Error('Service Unavailable') as AxiosError
       Object.assign(axiosError, {
@@ -428,6 +484,162 @@ describe('AuthService', () => {
       await expect(
         authService.submitCredentials('test@example.com', 'password123')
       ).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('setup2FA', () => {
+    it('posts token and returns setup response', async () => {
+      const mockResponse = {
+        user_id: 'user123',
+        qr_code: 'data:image/png;base64,abc',
+        secret: 'JBSWY3DPEHPK3PXP',
+        issuer: 'MyApp',
+        account_name: 'test@example.com'
+      }
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse })
+
+      const result = await authService.setup2FA('setup-token-123')
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/auth/2fa/setup'),
+        { token: 'setup-token-123' },
+        { withCredentials: true }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('throws error on token_expired', async () => {
+      const axiosError = new Error('Bad Request') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 400, data: { detail: 'token_expired' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.setup2FA('expired-token')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.data.detail).toBe('token_expired')
+      }
+    })
+
+    it('throws error on token_invalid', async () => {
+      const axiosError = new Error('Bad Request') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 400, data: { detail: 'token_invalid' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.setup2FA('invalid-token')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.data.detail).toBe('token_invalid')
+      }
+    })
+
+    it('throws error on token_used', async () => {
+      const axiosError = new Error('Bad Request') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 400, data: { detail: 'token_used' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.setup2FA('used-token')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.data.detail).toBe('token_used')
+      }
+    })
+
+    it('throws error on network failure', async () => {
+      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
+
+      await expect(authService.setup2FA('token')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('verify2FASetup', () => {
+    it('posts token and totp_code and returns verify response', async () => {
+      const mockResponse = {
+        message: '2FA setup complete',
+        backup_codes: ['code1', 'code2', 'code3'],
+        user_id: 'user123'
+      }
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse })
+
+      const result = await authService.verify2FASetup('setup-token', '123456')
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/auth/2fa/verify-setup'),
+        { token: 'setup-token', totp_code: '123456' },
+        { withCredentials: true }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('throws error on invalid TOTP code', async () => {
+      const axiosError = new Error('Bad Request') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 400, data: { detail: 'invalid totp code' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.verify2FASetup('token', '000000')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.data.detail).toBe('invalid totp code')
+      }
+    })
+
+    it('throws error on network failure', async () => {
+      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
+
+      await expect(authService.verify2FASetup('token', '123456')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('resend2FASetupEmail', () => {
+    it('posts email and returns resend response', async () => {
+      const mockResponse = { message: '2FA setup email sent' }
+      mockedAxios.post.mockResolvedValueOnce({ data: mockResponse })
+
+      const result = await authService.resend2FASetupEmail('test@example.com')
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/auth/2fa/resend-setup-email'),
+        { email: 'test@example.com' },
+        { withCredentials: true }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('throws error on failure', async () => {
+      const axiosError = new Error('Bad Request') as AxiosError
+      Object.assign(axiosError, {
+        isAxiosError: true,
+        response: { status: 400, data: { detail: 'email not found' } }
+      })
+      mockedAxios.post.mockRejectedValueOnce(axiosError)
+
+      try {
+        await authService.resend2FASetupEmail('bad@example.com')
+        expect.fail('Expected error to be thrown')
+      } catch (error: any) {
+        expect(error.response.data.detail).toBe('email not found')
+      }
+    })
+
+    it('throws error on network failure', async () => {
+      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
+
+      await expect(authService.resend2FASetupEmail('test@example.com')).rejects.toThrow('Network error')
     })
   })
 

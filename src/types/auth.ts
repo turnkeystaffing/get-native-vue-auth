@@ -85,6 +85,60 @@ export interface LogoutResponse {
 }
 
 /**
+ * 2FA error codes returned by the backend
+ *
+ * Login-phase (from /api/v1/oauth/login):
+ * - `2fa_setup_required` — user needs to complete 2FA setup
+ * - `2fa_code_required` — user must provide a TOTP code
+ *
+ * Setup-phase (from /api/v1/auth/2fa/setup):
+ * - `token_expired` — setup token has expired
+ * - `token_invalid` — setup token is invalid
+ * - `token_used` — setup token was already used
+ */
+export type TwoFactorErrorCode =
+  | '2fa_setup_required'
+  | '2fa_code_required'
+  | 'token_expired'
+  | 'token_invalid'
+  | 'token_used'
+
+/**
+ * Response from 2FA setup endpoint
+ */
+export interface TwoFactorSetupResponse {
+  user_id: string
+  /** Base64 data URI (e.g., `data:image/png;base64,...`) */
+  qr_code: string
+  secret: string
+  issuer: string
+  account_name: string
+}
+
+/**
+ * Response from 2FA verify-setup endpoint
+ */
+export interface TwoFactorVerifyResponse {
+  message: string
+  backup_codes: string[]
+  user_id: string
+}
+
+/**
+ * Response from 2FA resend-setup-email endpoint
+ */
+export interface TwoFactorResendResponse {
+  message: string
+}
+
+/**
+ * 2FA error response structure
+ */
+export interface TwoFactorErrorResponse {
+  detail: string
+}
+
+/**
  * Decoded JWT access token claims from our auth provider.
  * Contains user identity, roles, and standard JWT claims.
  */

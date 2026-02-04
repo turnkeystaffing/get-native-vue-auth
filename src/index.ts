@@ -61,6 +61,11 @@ export type {
   BackendTokenResponse,
   LogoutResponse,
   DecodedAccessToken,
+  TwoFactorErrorCode,
+  TwoFactorSetupResponse,
+  TwoFactorVerifyResponse,
+  TwoFactorResendResponse,
+  TwoFactorErrorResponse,
   BffAuthPluginOptions,
   BffAuthConfig,
   AuthIcons

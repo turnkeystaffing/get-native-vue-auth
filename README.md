@@ -201,14 +201,50 @@ const route = useRoute()
 const clientId = route.query.client_id as string
 const returnUrl = route.query.redirect_url as string
 
-async function handleLogin(email: string, password: string) {
-  // Submit credentials (sets oauth_session cookie)
-  await authService.submitCredentials(email, password)
+async function handleLogin(email: string, password: string, authCode?: string) {
+  try {
+    // Submit credentials with optional TOTP code (sets oauth_session cookie)
+    await authService.submitCredentials(email, password, authCode)
 
-  // Complete OAuth flow - redirects to /bff/login then back to originating SPA
-  // Note: This allows cross-origin redirects (required to return to Product SPA)
-  authService.completeOAuthFlow({ clientId, returnUrl })
+    // Complete OAuth flow - redirects to /bff/login then back to originating SPA
+    // Note: This allows cross-origin redirects (required to return to Product SPA)
+    authService.completeOAuthFlow({ clientId, returnUrl })
+  } catch (error: any) {
+    const detail = error.response?.data?.detail
+    if (detail === '2fa_setup_required') {
+      // Redirect user to 2FA setup flow
+    } else if (detail === '2fa_code_required') {
+      // Prompt user for TOTP code and re-submit
+    } else {
+      throw error
+    }
+  }
 }
+```
+
+### Two-Factor Authentication (2FA)
+
+The auth service provides methods for 2FA setup and verification. These are called directly by consuming apps — no composable or store integration.
+
+```typescript
+import { authService } from '@turnkeystaffing/get-native-vue-auth'
+import type {
+  TwoFactorSetupResponse,
+  TwoFactorVerifyResponse,
+  TwoFactorErrorCode
+} from '@turnkeystaffing/get-native-vue-auth'
+
+// 1. Initiate 2FA setup (returns QR code and secret)
+const setup: TwoFactorSetupResponse = await authService.setup2FA(setupToken)
+// setup.qr_code — data URI for QR code image
+// setup.secret — TOTP shared secret (security-sensitive, do not log or persist)
+
+// 2. Verify 2FA setup with TOTP code from authenticator app
+const result: TwoFactorVerifyResponse = await authService.verify2FASetup(token, totpCode)
+// result.backup_codes — one-time recovery codes (security-sensitive, do not log or persist)
+
+// 3. Resend 2FA setup email
+await authService.resend2FASetupEmail('user@example.com')
 ```
 
 ### JWT Utilities
@@ -337,6 +373,7 @@ interface AuthError {
 
 ### Types
 - `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
+- `TwoFactorErrorCode`, `TwoFactorSetupResponse`, `TwoFactorVerifyResponse`, `TwoFactorResendResponse`, `TwoFactorErrorResponse`
 
 ## License
 
