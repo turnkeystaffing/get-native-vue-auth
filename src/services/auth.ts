@@ -110,7 +110,7 @@ export function parseAuthError(error: AxiosError<BackendAuthError>): AuthError |
 export interface LoginCredentials {
   email: string
   password: string
-  authCode?: string
+  totp_code?: string
 }
 
 /**
@@ -144,18 +144,18 @@ class AuthService {
    *
    * @param email - User email address
    * @param password - User password
-   * @param authCode - Optional TOTP code for 2FA authentication
+   * @param totpCode - Optional TOTP code for 2FA authentication
    * @returns Promise that resolves on success, rejects on error
    * @throws AxiosError with status 401 for invalid credentials
    * @throws AxiosError with status 401 with detail '2fa_setup_required' when 2FA setup is needed
    * @throws AxiosError with status 401 with detail '2fa_code_required' when TOTP code is needed
    * @throws AxiosError with status 503 for service unavailable
    */
-  async submitCredentials(email: string, password: string, authCode?: string): Promise<void> {
+  async submitCredentials(email: string, password: string, totpCode?: string): Promise<void> {
     try {
       const payload: Record<string, string> = { email, password }
-      if (authCode !== undefined) {
-        payload.authCode = authCode
+      if (totpCode !== undefined) {
+        payload.totp_code = totpCode
       }
       await axios.post(
         `${getBffBaseUrl()}/api/v1/oauth/login`,
@@ -418,17 +418,18 @@ class AuthService {
 
   /**
    * Resend 2FA setup email
-   * POSTs to /api/v1/auth/2fa/resend-setup-email with user email.
+   * POSTs to /api/v1/auth/2fa/resend-setup-email with user email and password.
    *
    * @param email - User email address
+   * @param password - User password
    * @returns TwoFactorResendResponse with confirmation message
    * @throws AxiosError on failure (e.g., email not found, rate limited)
    */
-  async resend2FASetupEmail(email: string): Promise<TwoFactorResendResponse> {
+  async resend2FASetupEmail(email: string, password: string): Promise<TwoFactorResendResponse> {
     try {
       const response = await axios.post<TwoFactorResendResponse>(
         `${getBffBaseUrl()}/api/v1/auth/2fa/resend-setup-email`,
-        { email },
+        { email, password },
         { withCredentials: true }
       )
       logger.info('2FA setup email resent successfully')

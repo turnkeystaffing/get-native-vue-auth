@@ -78,14 +78,14 @@ export declare class AuthService {
      *
      * @param email - User email address
      * @param password - User password
-     * @param authCode - Optional TOTP code for 2FA authentication
+     * @param totpCode - Optional TOTP code for 2FA authentication
      * @returns Promise that resolves on success, rejects on error
      * @throws AxiosError with status 401 for invalid credentials
      * @throws AxiosError with status 401 with detail '2fa_setup_required' when 2FA setup is needed
      * @throws AxiosError with status 401 with detail '2fa_code_required' when TOTP code is needed
      * @throws AxiosError with status 503 for service unavailable
      */
-    submitCredentials(email: string, password: string, authCode?: string): Promise<void>;
+    submitCredentials(email: string, password: string, totpCode?: string): Promise<void>;
     /**
      * Check if user is authenticated by calling /bff/userinfo
      * This should be called on app load to determine auth state
@@ -158,13 +158,14 @@ export declare class AuthService {
     verify2FASetup(token: string, totpCode: string): Promise<TwoFactorVerifyResponse>;
     /**
      * Resend 2FA setup email
-     * POSTs to /api/v1/auth/2fa/resend-setup-email with user email.
+     * POSTs to /api/v1/auth/2fa/resend-setup-email with user email and password.
      *
      * @param email - User email address
+     * @param password - User password
      * @returns TwoFactorResendResponse with confirmation message
      * @throws AxiosError on failure (e.g., email not found, rate limited)
      */
-    resend2FASetupEmail(email: string): Promise<TwoFactorResendResponse>;
+    resend2FASetupEmail(email: string, password: string): Promise<TwoFactorResendResponse>;
 }
 
 export declare const authService: AuthService;
@@ -406,7 +407,7 @@ export declare interface JwtPayload {
 export declare interface LoginCredentials {
     email: string;
     password: string;
-    authCode?: string;
+    totp_code?: string;
 }
 
 /**

@@ -376,7 +376,7 @@ describe('AuthService', () => {
   })
 
   describe('submitCredentials', () => {
-    it('posts credentials to BFF login endpoint without authCode when not provided', async () => {
+    it('posts credentials to BFF login endpoint without totp_code when not provided', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: {} })
 
       await authService.submitCredentials('test@example.com', 'password123')
@@ -387,22 +387,22 @@ describe('AuthService', () => {
         { withCredentials: true }
       )
       const payload = mockedAxios.post.mock.calls[0][1]
-      expect(payload).not.toHaveProperty('authCode')
+      expect(payload).not.toHaveProperty('totp_code')
     })
 
-    it('includes authCode in payload when provided', async () => {
+    it('includes totp_code in payload when provided', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: {} })
 
       await authService.submitCredentials('test@example.com', 'pass', '123456')
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/oauth/login'),
-        { email: 'test@example.com', password: 'pass', authCode: '123456' },
+        { email: 'test@example.com', password: 'pass', totp_code: '123456' },
         { withCredentials: true }
       )
     })
 
-    it('resolves on 200 OK response with authCode provided', async () => {
+    it('resolves on 200 OK response with totp_code provided', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: {} })
 
       await expect(
@@ -606,15 +606,15 @@ describe('AuthService', () => {
   })
 
   describe('resend2FASetupEmail', () => {
-    it('posts email and returns resend response', async () => {
+    it('posts email and password and returns resend response', async () => {
       const mockResponse = { message: '2FA setup email sent' }
       mockedAxios.post.mockResolvedValueOnce({ data: mockResponse })
 
-      const result = await authService.resend2FASetupEmail('test@example.com')
+      const result = await authService.resend2FASetupEmail('test@example.com', 'password123')
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/auth/2fa/resend-setup-email'),
-        { email: 'test@example.com' },
+        { email: 'test@example.com', password: 'password123' },
         { withCredentials: true }
       )
       expect(result).toEqual(mockResponse)
@@ -629,7 +629,7 @@ describe('AuthService', () => {
       mockedAxios.post.mockRejectedValueOnce(axiosError)
 
       try {
-        await authService.resend2FASetupEmail('bad@example.com')
+        await authService.resend2FASetupEmail('bad@example.com', 'password123')
         expect.fail('Expected error to be thrown')
       } catch (error: any) {
         expect(error.response.data.detail).toBe('email not found')
@@ -639,7 +639,7 @@ describe('AuthService', () => {
     it('throws error on network failure', async () => {
       mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
 
-      await expect(authService.resend2FASetupEmail('test@example.com')).rejects.toThrow('Network error')
+      await expect(authService.resend2FASetupEmail('test@example.com', 'password123')).rejects.toThrow('Network error')
     })
   })
 

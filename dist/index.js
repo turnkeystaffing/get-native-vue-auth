@@ -91,7 +91,7 @@ class _e {
    *
    * @param email - User email address
    * @param password - User password
-   * @param authCode - Optional TOTP code for 2FA authentication
+   * @param totpCode - Optional TOTP code for 2FA authentication
    * @returns Promise that resolves on success, rejects on error
    * @throws AxiosError with status 401 for invalid credentials
    * @throws AxiosError with status 401 with detail '2fa_setup_required' when 2FA setup is needed
@@ -101,7 +101,7 @@ class _e {
   async submitCredentials(t, r, n) {
     try {
       const i = { email: t, password: r };
-      n !== void 0 && (i.authCode = n), await y.post(
+      n !== void 0 && (i.totp_code = n), await y.post(
         `${w()}/api/v1/oauth/login`,
         i,
         { withCredentials: !0 }
@@ -293,22 +293,23 @@ class _e {
   }
   /**
    * Resend 2FA setup email
-   * POSTs to /api/v1/auth/2fa/resend-setup-email with user email.
+   * POSTs to /api/v1/auth/2fa/resend-setup-email with user email and password.
    *
    * @param email - User email address
+   * @param password - User password
    * @returns TwoFactorResendResponse with confirmation message
    * @throws AxiosError on failure (e.g., email not found, rate limited)
    */
-  async resend2FASetupEmail(t) {
+  async resend2FASetupEmail(t, r) {
     try {
-      const r = await y.post(
+      const n = await y.post(
         `${w()}/api/v1/auth/2fa/resend-setup-email`,
-        { email: t },
+        { email: t, password: r },
         { withCredentials: !0 }
       );
-      return h.info("2FA setup email resent successfully"), r.data;
-    } catch (r) {
-      throw h.error("Failed to resend 2FA setup email", r), r;
+      return h.info("2FA setup email resent successfully"), n.data;
+    } catch (n) {
+      throw h.error("Failed to resend 2FA setup email", n), n;
     }
   }
 }
