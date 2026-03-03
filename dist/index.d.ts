@@ -99,10 +99,32 @@ export declare class AuthService {
      * For use by Product SPAs to redirect users to Central Login.
      *
      * Security: Enforces same-origin redirects to prevent open redirect attacks.
+     * For cross-origin redirects with a custom client ID, use {@link loginWithCustomClient}.
      *
      * @param options - Login options with optional returnUrl (defaults to current URL)
      */
     login(options?: LoginOptions): void;
+    /**
+     * Start a cross-origin login redirect using a custom OAuth client ID.
+     * For use when Central Login detects an existing BFF session and needs to
+     * redirect the user back to the originating Product SPA without re-prompting
+     * for credentials.
+     *
+     * Unlike {@link login}, this method skips same-origin validation — the BFF
+     * validates the redirect_url against registered client URIs for the given
+     * client_id. Only bffBaseUrl is required from config; config clientId is
+     * not used.
+     *
+     * @param options - Required clientId and returnUrl from the originating SPA.
+     *   `returnUrl` is passed verbatim to the BFF (including any hash fragment or query string) —
+     *   the BFF is responsible for validating the full URL against registered client redirect URIs.
+     * @throws {Error} if clientId is empty or whitespace
+     * @throws {Error} if returnUrl is not a valid URL
+     * @throws {Error} if returnUrl does not use http or https scheme
+     * @throws {AuthConfigurationError} if bffBaseUrl is not configured
+     * @see completeOAuthFlow for completing the OAuth flow after credential submission
+     */
+    loginWithCustomClient(options: LoginWithCustomClientOptions): void;
     /**
      * Complete OAuth flow after successful credential submission.
      * For use by Central Login only, after submitCredentials() succeeds.
@@ -416,6 +438,24 @@ export declare interface LoginCredentials {
 export declare interface LoginOptions {
     /** URL to return to after authentication (defaults to current URL) */
     returnUrl?: string;
+}
+
+/**
+ * Options for initiating a cross-origin login redirect with a custom OAuth client.
+ * For use when Central Login needs to redirect a user whose BFF session is already
+ * active back to an originating Product SPA.
+ *
+ * Both parameters are required — BFF validates the redirect_url against registered
+ * client URIs for the given client_id. Same-origin validation is intentionally
+ * skipped; only bffBaseUrl is required from config.
+ *
+ * @see completeOAuthFlow for the post-credential counterpart
+ */
+export declare interface LoginWithCustomClientOptions {
+    /** OAuth client ID from the originating Product SPA (required, must be non-empty) */
+    clientId: string;
+    /** URL to return to after authentication — may be cross-origin (required, must be http/https) */
+    returnUrl: string;
 }
 
 /**

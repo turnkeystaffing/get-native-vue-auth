@@ -4,6 +4,7 @@
  * Provides methods for authentication operations:
  * - checkAuth: Verify if user has active session
  * - login: Redirect to Central Login (for Product SPAs)
+ * - loginWithCustomClient: Cross-origin redirect with custom OAuth client (for Central Login session-reuse)
  * - completeOAuthFlow: Complete OAuth flow after credential submission (for Central Login)
  * - getAccessToken: Get JWT for API calls
  * - logout: End session
@@ -122,6 +123,24 @@ export interface LoginOptions {
 }
 
 /**
+ * Options for initiating a cross-origin login redirect with a custom OAuth client.
+ * For use when Central Login needs to redirect a user whose BFF session is already
+ * active back to an originating Product SPA.
+ *
+ * Both parameters are required — BFF validates the redirect_url against registered
+ * client URIs for the given client_id. Same-origin validation is intentionally
+ * skipped; only bffBaseUrl is required from config.
+ *
+ * @see completeOAuthFlow for the post-credential counterpart
+ */
+export interface LoginWithCustomClientOptions {
+  /** OAuth client ID from the originating Product SPA (required, must be non-empty) */
+  clientId: string
+  /** URL to return to after authentication — may be cross-origin (required, must be http/https) */
+  returnUrl: string
+}
+
+/**
  * Options for completing the OAuth flow (Central Login only)
  * Both parameters are required since Central Login must pass through
  * the client_id and redirect_url from the originating SPA.
@@ -211,6 +230,7 @@ class AuthService {
    * For use by Product SPAs to redirect users to Central Login.
    *
    * Security: Enforces same-origin redirects to prevent open redirect attacks.
+   * For cross-origin redirects with a custom client ID, use {@link loginWithCustomClient}.
    *
    * @param options - Login options with optional returnUrl (defaults to current URL)
    */
@@ -258,6 +278,61 @@ class AuthService {
     logger.debug('Initiating login redirect', { returnUrl: absoluteRedirectUrl })
 
     // Full page redirect to BFF login
+    window.location.href = `${loginPath}?${params.toString()}`
+  }
+
+  /**
+   * Start a cross-origin login redirect using a custom OAuth client ID.
+   * For use when Central Login detects an existing BFF session and needs to
+   * redirect the user back to the originating Product SPA without re-prompting
+   * for credentials.
+   *
+   * Unlike {@link login}, this method skips same-origin validation — the BFF
+   * validates the redirect_url against registered client URIs for the given
+   * client_id. Only bffBaseUrl is required from config; config clientId is
+   * not used.
+   *
+   * @param options - Required clientId and returnUrl from the originating SPA.
+   *   `returnUrl` is passed verbatim to the BFF (including any hash fragment or query string) —
+   *   the BFF is responsible for validating the full URL against registered client redirect URIs.
+   * @throws {Error} if clientId is empty or whitespace
+   * @throws {Error} if returnUrl is not a valid URL
+   * @throws {Error} if returnUrl does not use http or https scheme
+   * @throws {AuthConfigurationError} if bffBaseUrl is not configured
+   * @see completeOAuthFlow for completing the OAuth flow after credential submission
+   */
+  loginWithCustomClient(options: LoginWithCustomClientOptions): void {
+    const { clientId, returnUrl } = options
+
+    const trimmedClientId = clientId.trim()
+    if (!trimmedClientId) {
+      throw new Error('clientId must not be empty')
+    }
+
+    let returnUrlObj: URL
+    try {
+      returnUrlObj = new URL(returnUrl)
+    } catch {
+      throw new Error('returnUrl is not a valid URL')
+    }
+
+    if (returnUrlObj.protocol !== 'http:' && returnUrlObj.protocol !== 'https:') {
+      throw new Error('returnUrl must use http or https scheme')
+    }
+
+    const bffBaseUrl = getBffBaseUrl()
+    if (!bffBaseUrl) {
+      throw new AuthConfigurationError('BFF base URL is not configured.')
+    }
+
+    const loginPath = `${bffBaseUrl}/bff/login`
+    const params = new URLSearchParams({
+      client_id: trimmedClientId,
+      redirect_url: returnUrl
+    })
+
+    logger.debug('Initiating custom client login redirect', { clientId: trimmedClientId, returnUrl })
+
     window.location.href = `${loginPath}?${params.toString()}`
   }
 

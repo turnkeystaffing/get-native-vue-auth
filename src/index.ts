@@ -36,7 +36,7 @@ export {
   mapErrorType,
   isAuthConfigured
 } from './services/auth'
-export type { LoginCredentials, LoginOptions, CompleteOAuthFlowOptions } from './services/auth'
+export type { LoginCredentials, LoginOptions, LoginWithCustomClientOptions, CompleteOAuthFlowOptions } from './services/auth'
 
 // Interceptors
 export { setupAuthInterceptors } from './services/interceptors'

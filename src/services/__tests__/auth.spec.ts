@@ -185,6 +185,98 @@ describe('AuthService', () => {
       })
     })
 
+    describe('loginWithCustomClient', () => {
+      it('redirects with custom clientId and returnUrl (AC1)', () => {
+        authService.loginWithCustomClient({
+          clientId: 'spa-client',
+          returnUrl: 'https://app.example.com/dashboard'
+        })
+
+        expect(window.location.href).toContain('http://localhost:8080/bff/login')
+        expect(window.location.href).toContain('client_id=spa-client')
+        expect(window.location.href).toContain(
+          'redirect_url=' + encodeURIComponent('https://app.example.com/dashboard')
+        )
+      })
+
+      it('allows cross-origin returnUrl (AC2)', () => {
+        authService.loginWithCustomClient({
+          clientId: 'spa-client',
+          returnUrl: 'https://other-domain.com/callback'
+        })
+
+        // Cross-origin should NOT be blocked on the custom path
+        expect(window.location.href).toContain(
+          'redirect_url=' + encodeURIComponent('https://other-domain.com/callback')
+        )
+      })
+
+      it('works with only bffBaseUrl in config — no config clientId (AC3)', () => {
+        setGlobalConfig({
+          bffBaseUrl: 'http://localhost:8080',
+          clientId: '',
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
+          icons: {
+            sessionExpired: 'mdi-clock-alert-outline',
+            login: 'mdi-login',
+            permissionDenied: 'mdi-shield-alert',
+            serviceUnavailable: 'mdi-cloud-off-outline',
+            retry: 'mdi-refresh'
+          }
+        })
+
+        authService.loginWithCustomClient({
+          clientId: 'custom-client',
+          returnUrl: 'https://app.example.com/dashboard'
+        })
+
+        expect(window.location.href).toContain('client_id=custom-client')
+        expect(window.location.href).toContain('/bff/login')
+      })
+
+      it('throws AuthConfigurationError when bffBaseUrl is missing (AC4)', () => {
+        setGlobalConfig(null as any)
+
+        expect(() =>
+          authService.loginWithCustomClient({
+            clientId: 'spa-client',
+            returnUrl: 'https://app.example.com/dashboard'
+          })
+        ).toThrow(new AuthConfigurationError('BFF base URL is not configured.'))
+      })
+
+      it('throws when clientId is empty or whitespace', () => {
+        expect(() =>
+          authService.loginWithCustomClient({ clientId: '   ', returnUrl: 'https://app.example.com/dashboard' })
+        ).toThrow('clientId must not be empty')
+      })
+
+      it('throws when returnUrl is malformed', () => {
+        expect(() =>
+          authService.loginWithCustomClient({ clientId: 'spa-client', returnUrl: 'not a url at all' })
+        ).toThrow('returnUrl is not a valid URL')
+      })
+
+      it('rejects javascript: scheme in returnUrl (AC8)', () => {
+        expect(() =>
+          authService.loginWithCustomClient({
+            clientId: 'spa-client',
+            // eslint-disable-next-line no-script-url
+            returnUrl: 'javascript:alert(1)'
+          })
+        ).toThrow('returnUrl must use http or https scheme')
+      })
+
+      it('rejects data: scheme in returnUrl (AC9)', () => {
+        expect(() =>
+          authService.loginWithCustomClient({
+            clientId: 'spa-client',
+            returnUrl: 'data:text/html,<h1>evil</h1>'
+          })
+        ).toThrow('returnUrl must use http or https scheme')
+      })
+    })
+
     describe('Open Redirect Prevention (Security)', () => {
       it('blocks external URLs and redirects to home', () => {
         authService.login({ returnUrl: 'https://malicious-site.com/steal-data' })
