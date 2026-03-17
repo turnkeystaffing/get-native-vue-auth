@@ -47,6 +47,9 @@ function validateOptions(options: BffAuthPluginOptions): void {
   if (!options.clientId) {
     throw new Error('bffAuthPlugin: clientId is required')
   }
+  if (options.mode !== undefined && options.mode !== 'token' && options.mode !== 'cookie') {
+    throw new Error("bffAuthPlugin: mode must be 'token' or 'cookie'")
+  }
 }
 
 /**
@@ -59,7 +62,8 @@ function createConfig(options: BffAuthPluginOptions): BffAuthConfig {
     bffBaseUrl: options.bffBaseUrl,
     clientId: options.clientId,
     logger,
-    icons: { ...DEFAULT_ICONS, ...options.icons }
+    icons: { ...DEFAULT_ICONS, ...options.icons },
+    mode: options.mode ?? 'token'
   }
 }
 
@@ -85,7 +89,8 @@ export const bffAuthPlugin: Plugin<[BffAuthPluginOptions]> = {
 
     config.logger.debug('BFF Auth plugin installed', {
       bffBaseUrl: config.bffBaseUrl,
-      clientId: config.clientId
+      clientId: config.clientId,
+      mode: config.mode
     })
   }
 }

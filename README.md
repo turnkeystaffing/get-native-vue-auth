@@ -115,6 +115,34 @@ import {
 </script>
 ```
 
+### Cookie Mode (BFF Proxy Auth)
+
+For environments where a BFF proxy handles authentication entirely via session cookies, use `mode: 'cookie'`. This skips all token operations — no fetch, no store, no refresh, no Bearer header injection. Auth state is determined via `/bff/userinfo`.
+
+```typescript
+app.use(bffAuthPlugin, {
+  bffBaseUrl: 'https://api.example.com',
+  clientId: 'my-app-client-id',
+  mode: 'cookie'
+})
+```
+
+**What changes in cookie mode:**
+- Request interceptor skips `ensureValidToken()` and Bearer header injection
+- `initAuth()` skips token prefetch (still calls `checkAuth()`)
+- `ensureValidToken()` returns `null` immediately
+- `getAccessToken()` throws `AuthConfigurationError`
+- Token-derived getters (`decodedToken`, `userEmail`, `userRoles`) return `null`/`[]`
+
+**What stays the same:**
+- Login/logout flows
+- `checkAuth()` via `/bff/userinfo`
+- Response interceptor (401/403/503 error handling)
+- Router guards
+- Error UI components
+
+**Important:** When using cookie mode with `setupAuthInterceptors` on your own Axios instances, you must configure `withCredentials: true` as a default on those instances so cookies are sent with requests.
+
 ## Usage
 
 ### useAuth Composable
@@ -265,6 +293,7 @@ const email = extractEmailFromJwt(accessToken)
 | `bffBaseUrl` | `string` | Yes | Base URL of the BFF server |
 | `clientId` | `string` | Yes | OAuth client ID |
 | `logger` | `Logger` | No | Custom logger instance |
+| `mode` | `'token' \| 'cookie'` | No | Auth mode: `'token'` (default) manages JWTs; `'cookie'` relies on BFF session cookies |
 | `icons` | `Partial<AuthIcons>` | No | Override or disable component icons |
 
 ### Custom Icons
@@ -372,7 +401,7 @@ interface AuthError {
 - `ServiceUnavailableOverlay` - Service unavailable overlay
 
 ### Types
-- `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
+- `AuthMode`, `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
 - `TwoFactorErrorCode`, `TwoFactorSetupResponse`, `TwoFactorVerifyResponse`, `TwoFactorResendResponse`, `TwoFactorErrorResponse`
 
 ## License

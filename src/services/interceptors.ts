@@ -19,6 +19,7 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios'
 import type { AuthError, BackendAuthError } from '../types/auth'
 import { parseAuthError, AuthConfigurationError, isAuthConfigured } from './auth'
+import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 /**
@@ -72,6 +73,11 @@ export function setupAuthInterceptors(
   // Request interceptor - add auth header
   axiosInstance.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
+      // In cookie mode, skip all token logic — auth is handled by session cookies
+      if (getGlobalConfig()?.mode === 'cookie') {
+        return config
+      }
+
       const authStore = getAuthStore()
 
       // Only inject token if user is authenticated

@@ -65,6 +65,7 @@ import { useAuthStore } from '../../stores/auth'
 import { BFF_AUTH_CONFIG_KEY } from '../../config'
 import { DEFAULT_ICONS } from '../../plugin'
 import { authService } from '../../services/auth'
+import { testConfig } from '../../test-setup'
 import type { AuthError } from '../../types/auth'
 import type { BffAuthConfig } from '../../types/config'
 
@@ -121,12 +122,7 @@ describe('ServiceUnavailableOverlay', () => {
   })
 
   /** Default mock config for providing BFF_AUTH_CONFIG_KEY */
-  const defaultMockConfig: BffAuthConfig = {
-    bffBaseUrl: 'https://bff.example.com',
-    clientId: 'test-app',
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as unknown as BffAuthConfig['logger'],
-    icons: { ...DEFAULT_ICONS }
-  }
+  const defaultMockConfig: BffAuthConfig = { ...testConfig, icons: { ...DEFAULT_ICONS } }
 
   /**
    * Mount helper with common configuration

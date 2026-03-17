@@ -69,7 +69,8 @@ describe('Auth Interceptors', () => {
         permissionDenied: 'mdi-shield-alert',
         serviceUnavailable: 'mdi-cloud-off-outline',
         retry: 'mdi-refresh'
-      }
+      },
+      mode: 'token'
     }
     setGlobalConfig(mockConfig)
 
@@ -547,6 +548,114 @@ describe('Auth Interceptors', () => {
 
         await expect(axiosInstance.get('/api/v1/query')).rejects.toBeDefined()
         expect(mockAuthStore.setError).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Cookie Mode', () => {
+    it('request interceptor does NOT call ensureValidToken when mode is cookie (AC3)', async () => {
+      // Set cookie mode config
+      setGlobalConfig({
+        bffBaseUrl: 'http://localhost:8080',
+        clientId: 'test-client',
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
+        icons: {
+          sessionExpired: 'mdi-clock-alert-outline',
+          login: 'mdi-login',
+          permissionDenied: 'mdi-shield-alert',
+          serviceUnavailable: 'mdi-cloud-off-outline',
+          retry: 'mdi-refresh'
+        },
+        mode: 'cookie'
+      })
+
+      mockAuthStore.isAuthenticated = true
+      vi.mocked(mockAuthStore.ensureValidToken).mockResolvedValue('test-jwt-token')
+
+      setupAuthInterceptors(axiosInstance, () => mockAuthStore)
+
+      let capturedConfig: InternalAxiosRequestConfig | undefined
+      axiosInstance.defaults.adapter = async (config) => {
+        capturedConfig = config as InternalAxiosRequestConfig
+        return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+      }
+
+      await axiosInstance.get('/api/v1/query')
+
+      expect(mockAuthStore.ensureValidToken).not.toHaveBeenCalled()
+      expect(capturedConfig?.headers?.Authorization).toBeUndefined()
+    })
+
+    it('request interceptor does NOT set Authorization header when mode is cookie', async () => {
+      setGlobalConfig({
+        bffBaseUrl: 'http://localhost:8080',
+        clientId: 'test-client',
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
+        icons: {
+          sessionExpired: 'mdi-clock-alert-outline',
+          login: 'mdi-login',
+          permissionDenied: 'mdi-shield-alert',
+          serviceUnavailable: 'mdi-cloud-off-outline',
+          retry: 'mdi-refresh'
+        },
+        mode: 'cookie'
+      })
+
+      mockAuthStore.isAuthenticated = true
+
+      setupAuthInterceptors(axiosInstance, () => mockAuthStore)
+
+      let capturedConfig: InternalAxiosRequestConfig | undefined
+      axiosInstance.defaults.adapter = async (config) => {
+        capturedConfig = config as InternalAxiosRequestConfig
+        return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+      }
+
+      await axiosInstance.get('/api/v1/query')
+
+      expect(capturedConfig?.headers?.Authorization).toBeUndefined()
+    })
+
+    it('response interceptor still handles 401/403/503 in cookie mode (AC8)', async () => {
+      setGlobalConfig({
+        bffBaseUrl: 'http://localhost:8080',
+        clientId: 'test-client',
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
+        icons: {
+          sessionExpired: 'mdi-clock-alert-outline',
+          login: 'mdi-login',
+          permissionDenied: 'mdi-shield-alert',
+          serviceUnavailable: 'mdi-cloud-off-outline',
+          retry: 'mdi-refresh'
+        },
+        mode: 'cookie'
+      })
+
+      setupAuthInterceptors(axiosInstance, () => mockAuthStore)
+
+      axiosInstance.defaults.adapter = async () => {
+        throw {
+          response: {
+            status: 401,
+            data: {
+              detail: 'Session expired',
+              error_type: 'authentication_error'
+            },
+            headers: {}
+          },
+          isAxiosError: true,
+          config: {},
+          toJSON: () => ({})
+        }
+      }
+
+      await expect(axiosInstance.get('/api/v1/query')).rejects.toMatchObject({
+        response: { status: 401 }
+      })
+
+      expect(mockAuthStore.setError).toHaveBeenCalledWith({
+        type: 'session_expired',
+        message: 'Session expired'
       })
     })
   })

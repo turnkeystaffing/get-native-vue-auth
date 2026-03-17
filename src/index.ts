@@ -68,7 +68,8 @@ export type {
   TwoFactorErrorResponse,
   BffAuthPluginOptions,
   BffAuthConfig,
-  AuthIcons
+  AuthIcons,
+  AuthMode
 } from './types'
 
 // Components

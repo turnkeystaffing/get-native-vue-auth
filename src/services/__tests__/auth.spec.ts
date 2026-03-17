@@ -15,7 +15,8 @@ import {
   AuthConfigurationError
 } from '@/services/auth'
 import { setGlobalConfig } from '@/config'
-import type { BffAuthConfig } from '@/types/config'
+import { bffAuthPlugin } from '@/plugin'
+import { testConfig } from '@/test-setup'
 
 // Mock axios
 vi.mock('axios')
@@ -36,24 +37,7 @@ describe('AuthService', () => {
     vi.clearAllMocks()
 
     // Ensure config is set for each test
-    const mockConfig: BffAuthConfig = {
-      bffBaseUrl: 'http://localhost:8080',
-      clientId: 'test-client',
-      logger: {
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn()
-      } as any,
-      icons: {
-        sessionExpired: 'mdi-clock-alert-outline',
-        login: 'mdi-login',
-        permissionDenied: 'mdi-shield-alert',
-        serviceUnavailable: 'mdi-cloud-off-outline',
-        retry: 'mdi-refresh'
-      }
-    }
-    setGlobalConfig(mockConfig)
+    setGlobalConfig(testConfig)
   })
 
   afterEach(() => {
@@ -212,18 +196,7 @@ describe('AuthService', () => {
       })
 
       it('works with only bffBaseUrl in config — no config clientId (AC3)', () => {
-        setGlobalConfig({
-          bffBaseUrl: 'http://localhost:8080',
-          clientId: '',
-          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
-          icons: {
-            sessionExpired: 'mdi-clock-alert-outline',
-            login: 'mdi-login',
-            permissionDenied: 'mdi-shield-alert',
-            serviceUnavailable: 'mdi-cloud-off-outline',
-            retry: 'mdi-refresh'
-          }
-        })
+        setGlobalConfig({ ...testConfig, clientId: '' })
 
         authService.loginWithCustomClient({
           clientId: 'custom-client',
@@ -732,6 +705,71 @@ describe('AuthService', () => {
       mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
 
       await expect(authService.resend2FASetupEmail('test@example.com', 'password123')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('cookie mode', () => {
+    it('getAccessToken() throws AuthConfigurationError when mode is cookie', async () => {
+      setGlobalConfig({ ...testConfig, mode: 'cookie' })
+
+      await expect(authService.getAccessToken()).rejects.toThrow(AuthConfigurationError)
+      await expect(authService.getAccessToken()).rejects.toThrow(
+        'getAccessToken() is not available in cookie mode'
+      )
+      // Should NOT make any HTTP call
+      expect(mockedAxios.post).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('plugin mode validation', () => {
+    it('throws error when mode is invalid', () => {
+      const mockApp = {
+        provide: vi.fn()
+      } as any
+
+      expect(() =>
+        bffAuthPlugin.install!(mockApp, {
+          bffBaseUrl: 'http://localhost:8080',
+          clientId: 'test-client',
+          mode: 'invalid' as any
+        })
+      ).toThrow("bffAuthPlugin: mode must be 'token' or 'cookie'")
+    })
+
+    it('throws error when mode is empty string', () => {
+      const mockApp = {
+        provide: vi.fn()
+      } as any
+
+      expect(() =>
+        bffAuthPlugin.install!(mockApp, {
+          bffBaseUrl: 'http://localhost:8080',
+          clientId: 'test-client',
+          mode: '' as any
+        })
+      ).toThrow("bffAuthPlugin: mode must be 'token' or 'cookie'")
+    })
+
+    it('accepts valid mode values without throwing', () => {
+      const mockApp = {
+        provide: vi.fn()
+      } as any
+
+      expect(() =>
+        bffAuthPlugin.install!(mockApp, {
+          bffBaseUrl: 'http://localhost:8080',
+          clientId: 'test-client',
+          mode: 'cookie'
+        })
+      ).not.toThrow()
+
+      expect(() =>
+        bffAuthPlugin.install!(mockApp, {
+          bffBaseUrl: 'http://localhost:8080',
+          clientId: 'test-client',
+          mode: 'token'
+        })
+      ).not.toThrow()
     })
   })
 

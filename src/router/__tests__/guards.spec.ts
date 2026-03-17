@@ -360,6 +360,58 @@ describe('Auth Guards', () => {
     })
   })
 
+  describe('cookie mode', () => {
+    it('allows navigation when authenticated via cookie (no token)', async () => {
+      // In cookie mode, initAuth sets isAuthenticated=true without fetching a token
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        initAuth: async () => {
+          // Simulates cookie mode: authenticated via checkAuth, no token
+          mocks.store.isAuthenticated = true
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(router.currentRoute.value.path).toBe('/protected')
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+
+    it('redirects to login when cookie session expired (checkAuth returns 401)', async () => {
+      // In cookie mode, if BFF session cookie is expired, checkAuth returns unauth
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        initAuth: async () => {
+          // Simulates cookie mode: session expired, checkAuth returned 401
+          mocks.store.isAuthenticated = false
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
+    })
+
+    it('does not trigger token operations during navigation', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        initAuth: async () => {
+          mocks.store.isAuthenticated = true
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+      await router.push('/dashboard')
+
+      // initAuth called once (first protected nav), no other auth calls
+      expect(mocks.store.initAuth).toHaveBeenCalledTimes(1)
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+  })
+
   describe('setupAuthGuard integration', () => {
     it('works with real Pinia store', async () => {
       const authStore = useAuthStore()

@@ -68,6 +68,13 @@ export declare interface AuthIcons {
 }
 
 /**
+ * Authentication mode
+ * - 'token': Explicit token management with Bearer header injection (default)
+ * - 'cookie': BFF proxy handles auth via session cookies; no token operations
+ */
+export declare type AuthMode = 'token' | 'cookie';
+
+/**
  * Auth Service Client for BFF endpoints
  */
 export declare class AuthService {
@@ -257,6 +264,8 @@ export declare interface BffAuthConfig {
     logger: Logger;
     /** Resolved icon configuration */
     icons: AuthIcons;
+    /** Resolved authentication mode */
+    mode: AuthMode;
 }
 
 /**
@@ -279,6 +288,8 @@ export declare interface BffAuthPluginOptions {
     logger?: Logger;
     /** Custom icons - optional, partial overrides merged with MDI defaults */
     icons?: Partial<AuthIcons>;
+    /** Authentication mode - 'token' (default) or 'cookie' for BFF cookie-only auth */
+    mode?: AuthMode;
 }
 
 /**

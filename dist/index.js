@@ -1,15 +1,15 @@
-import { createLogger as A } from "@turnkeystaffing/get-native-vue-logger";
-import { inject as le, computed as l, defineComponent as M, ref as D, openBlock as T, createBlock as U, unref as o, withCtx as u, createVNode as p, createTextVNode as b, toDisplayString as k, createCommentVNode as N, createElementVNode as P, watch as ue, onUnmounted as ce } from "vue";
+import { createLogger as _ } from "@turnkeystaffing/get-native-vue-logger";
+import { inject as le, computed as l, defineComponent as N, ref as B, openBlock as U, createBlock as S, unref as o, withCtx as u, createVNode as p, createTextVNode as A, toDisplayString as E, createCommentVNode as G, createElementVNode as R, watch as ue, onUnmounted as ce } from "vue";
 import { defineStore as de } from "pinia";
 import y from "axios";
 import { jwtDecode as ee } from "jwt-decode";
-import { VDialog as fe, VCard as te, VCardTitle as re, VIcon as G, VCardText as ne, VCardActions as ie, VSpacer as he, VBtn as j, VSnackbar as ge, VOverlay as pe, VProgressLinear as me } from "vuetify/components";
+import { VDialog as fe, VCard as te, VCardTitle as re, VIcon as j, VCardText as ne, VCardActions as ie, VSpacer as he, VBtn as q, VSnackbar as ge, VOverlay as pe, VProgressLinear as me } from "vuetify/components";
 const se = /* @__PURE__ */ Symbol("bff-auth-config");
 let oe = null;
 function ve(e) {
   oe = e;
 }
-function q() {
+function x() {
   return oe;
 }
 function z() {
@@ -32,14 +32,17 @@ function we(e) {
     throw new Error("bffAuthPlugin: bffBaseUrl is required");
   if (!e.clientId)
     throw new Error("bffAuthPlugin: clientId is required");
+  if (e.mode !== void 0 && e.mode !== "token" && e.mode !== "cookie")
+    throw new Error("bffAuthPlugin: mode must be 'token' or 'cookie'");
 }
 function be(e) {
-  const t = e.logger ?? A("BffAuth");
+  const t = e.logger ?? _("BffAuth");
   return {
     bffBaseUrl: e.bffBaseUrl,
     clientId: e.clientId,
     logger: t,
-    icons: { ...ye, ...e.icons }
+    icons: { ...ye, ...e.icons },
+    mode: e.mode ?? "token"
   };
 }
 const Oe = {
@@ -48,23 +51,24 @@ const Oe = {
     const r = be(t);
     e.provide(se, r), ve(r), r.logger.debug("BFF Auth plugin installed", {
       bffBaseUrl: r.bffBaseUrl,
-      clientId: r.clientId
+      clientId: r.clientId,
+      mode: r.mode
     });
   }
-}, f = A("AuthService");
-class E extends Error {
+}, f = _("AuthService");
+class b extends Error {
   constructor(t) {
     super(t), this.name = "AuthConfigurationError";
   }
 }
 function w() {
-  return q()?.bffBaseUrl || "";
+  return x()?.bffBaseUrl || "";
 }
 function W() {
-  return q()?.clientId || "";
+  return x()?.clientId || "";
 }
-function B() {
-  const e = q();
+function V() {
+  const e = x();
   return !!(e?.bffBaseUrl && e?.clientId);
 }
 function Ae(e) {
@@ -119,8 +123,8 @@ class _e {
    * @throws AuthConfigurationError if auth is not configured
    */
   async checkAuth() {
-    if (!B())
-      throw new E(
+    if (!V())
+      throw new b(
         "Authentication service is not configured. Please contact your administrator."
       );
     try {
@@ -151,8 +155,8 @@ class _e {
    */
   login(t) {
     const r = t || {};
-    if (!B())
-      throw f.error("Cannot initiate login: Auth configuration is incomplete"), new E(
+    if (!V())
+      throw f.error("Cannot initiate login: Auth configuration is incomplete"), new b(
         "Authentication service is not configured. Please contact your administrator."
       );
     const n = r.returnUrl || window.location.href;
@@ -203,7 +207,7 @@ class _e {
       throw new Error("returnUrl must use http or https scheme");
     const a = w();
     if (!a)
-      throw new E("BFF base URL is not configured.");
+      throw new b("BFF base URL is not configured.");
     const c = `${a}/bff/login`, h = new URLSearchParams({
       client_id: i,
       redirect_url: n
@@ -241,8 +245,12 @@ class _e {
    * @throws AuthConfigurationError if auth is not configured
    */
   async getAccessToken() {
-    if (!B())
-      throw new E(
+    if (x()?.mode === "cookie")
+      throw new b(
+        "getAccessToken() is not available in cookie mode. Token management is handled by the BFF proxy via cookies."
+      );
+    if (!V())
+      throw new b(
         "Authentication service is not configured. Please contact your administrator."
       );
     try {
@@ -355,12 +363,12 @@ class _e {
     }
   }
 }
-const _ = new _e();
+const k = new _e();
 function Me() {
-  return _;
+  return k;
 }
-const C = A("JwtUtils");
-function Ee(e) {
+const C = _("JwtUtils");
+function ke(e) {
   if (!e)
     return null;
   try {
@@ -370,10 +378,10 @@ function Ee(e) {
   }
 }
 function Ne(e) {
-  const t = Ee(e);
+  const t = ke(e);
   return !t?.email || typeof t.email != "string" ? null : t.email;
 }
-function ke(e) {
+function Ee(e) {
   if (!e)
     return null;
   try {
@@ -383,8 +391,8 @@ function ke(e) {
     return C.warn("Failed to decode access token:", t), null;
   }
 }
-const H = 5, S = A("AuthStore");
-let I = null;
+const H = 5, I = _("AuthStore");
+let F = null;
 const Y = de("auth", {
   state: () => ({
     isAuthenticated: !1,
@@ -407,7 +415,7 @@ const Y = de("auth", {
      * Decoded JWT access token with all claims.
      * Returns null if token is not available or invalid.
      */
-    decodedToken: (e) => ke(e.accessToken),
+    decodedToken: (e) => Ee(e.accessToken),
     /**
      * User email extracted from JWT access token.
      * Returns null if token is not available or email claim is missing.
@@ -489,10 +497,10 @@ const Y = de("auth", {
     async initAuth() {
       this.isLoading = !0, this.error = null;
       try {
-        const e = await _.checkAuth();
-        this.isAuthenticated = e.isAuthenticated, this.user = e.user, e.isAuthenticated && await this.ensureValidToken();
+        const e = await k.checkAuth();
+        this.isAuthenticated = e.isAuthenticated, this.user = e.user, e.isAuthenticated && x()?.mode !== "cookie" && await this.ensureValidToken();
       } catch (e) {
-        S.error("Failed to initialize auth:", e), this.isAuthenticated = !1, this.user = null, e instanceof E && this.setError({
+        I.error("Failed to initialize auth:", e), this.isAuthenticated = !1, this.user = null, e instanceof b && this.setError({
           type: "service_unavailable",
           message: e.message
         });
@@ -507,15 +515,17 @@ const Y = de("auth", {
      * @returns Access token string or null if session expired
      */
     async ensureValidToken() {
+      if (x()?.mode === "cookie")
+        return null;
       if (this.accessToken && !this.checkTokenNeedsRefresh())
         return this.accessToken;
-      if (I)
-        return (await I)?.accessToken ?? null;
-      I = this._refreshToken();
+      if (F)
+        return (await F)?.accessToken ?? null;
+      F = this._refreshToken();
       try {
-        return (await I)?.accessToken ?? null;
+        return (await F)?.accessToken ?? null;
       } finally {
-        I = null;
+        F = null;
       }
     },
     /**
@@ -524,16 +534,16 @@ const Y = de("auth", {
      */
     async _refreshToken() {
       try {
-        const e = await _.getAccessToken();
-        return e ? !e.accessToken || e.accessToken.trim() === "" ? (S.error("Invalid token response: empty accessToken"), this.setError({
+        const e = await k.getAccessToken();
+        return e ? !e.accessToken || e.accessToken.trim() === "" ? (I.error("Invalid token response: empty accessToken"), this.setError({
           type: "session_expired",
           message: "Invalid token received. Please sign in again."
-        }), null) : ((typeof e.expiresIn != "number" || !Number.isFinite(e.expiresIn) || e.expiresIn < H) && (S.error(`Invalid expiresIn value: ${e.expiresIn}, using minimum`), e.expiresIn = H), this.accessToken = e.accessToken, this.tokenExpiresAt = Date.now() + e.expiresIn * 1e3, e) : (this.setError({
+        }), null) : ((typeof e.expiresIn != "number" || !Number.isFinite(e.expiresIn) || e.expiresIn < H) && (I.error(`Invalid expiresIn value: ${e.expiresIn}, using minimum`), e.expiresIn = H), this.accessToken = e.accessToken, this.tokenExpiresAt = Date.now() + e.expiresIn * 1e3, e) : (this.setError({
           type: "session_expired",
           message: "Your session has expired. Please sign in again."
         }), null);
       } catch (e) {
-        return S.error("Token refresh failed:", e), e instanceof E ? (this.setError({
+        return I.error("Token refresh failed:", e), e instanceof b ? (this.setError({
           type: "service_unavailable",
           message: e.message
         }), null) : (this.setError({
@@ -548,18 +558,18 @@ const Y = de("auth", {
      * @param returnUrl - URL to return to after authentication
      */
     login(e) {
-      this.isLoading = !0, this.error = null, _.login(e ? { returnUrl: e } : void 0);
+      this.isLoading = !0, this.error = null, k.login(e ? { returnUrl: e } : void 0);
     },
     /**
      * Logout - revoke session and reset state
      */
     async logout() {
       try {
-        await _.logout();
+        await k.logout();
       } catch (e) {
-        S.error("Logout failed:", e);
+        I.error("Logout failed:", e);
       }
-      this.$reset(), _.login();
+      this.$reset(), k.login();
     },
     /**
      * Set auth error state
@@ -579,17 +589,17 @@ const Y = de("auth", {
   }
 });
 function J() {
-  const e = Y(), t = l(() => e.isAuthenticated), r = l(() => e.isLoading), n = l(() => e.user), i = l(() => e.error), s = l(() => e.userEmail), a = l(() => e.decodedToken), c = l(() => e.userRoles), h = l(() => e.userId), g = l(() => e.userGuid), v = l(() => e.username), V = l(() => e.sessionId);
-  function R(d) {
+  const e = Y(), t = l(() => e.isAuthenticated), r = l(() => e.isLoading), n = l(() => e.user), i = l(() => e.error), s = l(() => e.userEmail), a = l(() => e.decodedToken), c = l(() => e.userRoles), h = l(() => e.userId), g = l(() => e.userGuid), v = l(() => e.username), O = l(() => e.sessionId);
+  function $(d) {
     return e.hasRole(d);
   }
-  function x(d) {
+  function T(d) {
     e.login(d);
   }
-  async function $() {
+  async function L() {
     await e.logout();
   }
-  function O() {
+  function M() {
     e.clearError();
   }
   return {
@@ -605,18 +615,20 @@ function J() {
     userId: h,
     userGuid: g,
     username: v,
-    sessionId: V,
+    sessionId: O,
     // Actions
-    login: x,
-    logout: $,
-    clearError: O,
-    hasRole: R
+    login: T,
+    logout: L,
+    clearError: M,
+    hasRole: $
   };
 }
-const K = A("AuthInterceptors");
+const K = _("AuthInterceptors");
 function Ge(e, t) {
   e.interceptors.request.use(
     async (r) => {
+      if (x()?.mode === "cookie")
+        return r;
       const n = t();
       if (!n.isAuthenticated)
         return r;
@@ -624,7 +636,7 @@ function Ge(e, t) {
         const i = await n.ensureValidToken();
         i && (r.headers.Authorization = `Bearer ${i}`);
       } catch (i) {
-        if (i instanceof E)
+        if (i instanceof b)
           return n.setError({
             type: "service_unavailable",
             message: i.message
@@ -638,7 +650,7 @@ function Ge(e, t) {
     (r) => r,
     async (r) => {
       const n = t(), i = r.response?.status, s = ae(r);
-      if (i === 401 && !B())
+      if (i === 401 && !V())
         K.warn("401 received but auth is not configured, ignoring");
       else if (s)
         n.setError(s);
@@ -658,7 +670,7 @@ function Ge(e, t) {
     }
   );
 }
-const F = A("AuthGuard");
+const P = _("AuthGuard");
 function xe(e) {
   return e.meta.public === !0;
 }
@@ -669,11 +681,11 @@ async function Te(e) {
   const r = 200;
   for (; e.isLoading && t < r; )
     await new Promise((n) => setTimeout(n, 50)), t++;
-  return e.isLoading ? (F.warn("Auth initialization timed out after 10 seconds"), !1) : !0;
+  return e.isLoading ? (P.warn("Auth initialization timed out after 10 seconds"), !1) : !0;
 }
 const Ue = {
   getAuthStore: () => Y(),
-  getAuthService: () => _
+  getAuthService: () => k
 };
 function Se(e = Ue) {
   let t = !1;
@@ -687,26 +699,26 @@ function Se(e = Ue) {
         try {
           await n.initAuth();
         } catch (a) {
-          F.error("Failed to initialize auth:", a);
+          P.error("Failed to initialize auth:", a);
         }
       }
-      return await Te(n) ? n.isAuthenticated ? !0 : (i.login({ returnUrl: r.fullPath }), !1) : (F.warn("Auth not ready, redirecting to login"), i.login({ returnUrl: r.fullPath }), !1);
+      return await Te(n) ? n.isAuthenticated ? !0 : (i.login({ returnUrl: r.fullPath }), !1) : (P.warn("Auth not ready, redirecting to login"), i.login({ returnUrl: r.fullPath }), !1);
     } catch (s) {
-      return s instanceof E ? (F.error("Auth configuration error:", s.message), n.setError({
+      return s instanceof b ? (P.error("Auth configuration error:", s.message), n.setError({
         type: "service_unavailable",
         message: s.message
-      }), !0) : (F.error("Unexpected error in auth guard:", s), i.login({ returnUrl: r.fullPath }), !1);
+      }), !0) : (P.error("Unexpected error in auth guard:", s), i.login({ returnUrl: r.fullPath }), !1);
     }
   };
 }
 function je(e) {
   e.beforeEach(Se());
 }
-const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE__ */ M({
+const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE__ */ N({
   name: "SessionExpiredModal",
   __name: "SessionExpiredModal",
   setup(e) {
-    const t = A("SessionExpiredModal"), r = z(), { error: n, login: i } = J(), s = D(!1), a = l(() => n.value?.type === "session_expired"), c = l(
+    const t = _("SessionExpiredModal"), r = z(), { error: n, login: i } = J(), s = B(!1), a = l(() => n.value?.type === "session_expired"), c = l(
       () => n.value?.type === "session_expired" && n.value.message || X
     );
     function h() {
@@ -720,7 +732,7 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
         }
       }
     }
-    return (g, v) => (T(), U(o(fe), {
+    return (g, v) => (U(), S(o(fe), {
       "model-value": a.value,
       persistent: "",
       "max-width": "400",
@@ -736,30 +748,30 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
               class: "text-h5 d-flex align-center"
             }, {
               default: u(() => [
-                o(r).icons.sessionExpired ? (T(), U(o(G), {
+                o(r).icons.sessionExpired ? (U(), S(o(j), {
                   key: 0,
                   color: "warning",
                   class: "mr-2"
                 }, {
                   default: u(() => [
-                    b(k(o(r).icons.sessionExpired), 1)
+                    A(E(o(r).icons.sessionExpired), 1)
                   ]),
                   _: 1
-                })) : N("", !0),
-                v[0] || (v[0] = b(" Session Expired ", -1))
+                })) : G("", !0),
+                v[0] || (v[0] = A(" Session Expired ", -1))
               ]),
               _: 1
             }),
             p(o(ne), { id: "session-expired-message" }, {
               default: u(() => [
-                b(k(c.value), 1)
+                A(E(c.value), 1)
               ]),
               _: 1
             }),
             p(o(ie), null, {
               default: u(() => [
                 p(o(he)),
-                p(o(j), {
+                p(o(q), {
                   color: "primary",
                   variant: "elevated",
                   "prepend-icon": o(r).icons.login || void 0,
@@ -770,7 +782,7 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
                   onClick: h
                 }, {
                   default: u(() => [...v[1] || (v[1] = [
-                    b(" Sign In ", -1)
+                    A(" Sign In ", -1)
                   ])]),
                   _: 1
                 }, 8, ["prepend-icon", "loading", "disabled"])
@@ -784,11 +796,11 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
       _: 1
     }, 8, ["model-value"]));
   }
-}), Ie = { class: "d-flex align-center" }, Ce = 5e3, Q = "You do not have permission to perform this action.", ze = /* @__PURE__ */ M({
+}), Ie = { class: "d-flex align-center" }, Fe = 5e3, Q = "You do not have permission to perform this action.", ze = /* @__PURE__ */ N({
   name: "PermissionDeniedToast",
   __name: "PermissionDeniedToast",
   setup(e) {
-    const t = A("PermissionDeniedToast"), r = z(), { error: n, clearError: i } = J(), s = l({
+    const t = _("PermissionDeniedToast"), r = z(), { error: n, clearError: i } = J(), s = l({
       get: () => n.value?.type === "permission_denied",
       set: (h) => {
         h || c();
@@ -799,10 +811,10 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
     function c() {
       t.info("Permission denied toast closed"), i();
     }
-    return (h, g) => (T(), U(o(ge), {
+    return (h, g) => (U(), S(o(ge), {
       modelValue: s.value,
       "onUpdate:modelValue": g[0] || (g[0] = (v) => s.value = v),
-      timeout: Ce,
+      timeout: Fe,
       color: "warning",
       location: "top",
       "data-testid": "permission-denied-toast",
@@ -810,83 +822,83 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
       "aria-live": "polite"
     }, {
       actions: u(() => [
-        p(o(j), {
+        p(o(q), {
           variant: "text",
           "data-testid": "permission-denied-close-button",
           "aria-label": "Dismiss notification",
           onClick: c
         }, {
           default: u(() => [...g[1] || (g[1] = [
-            b(" Close ", -1)
+            A(" Close ", -1)
           ])]),
           _: 1
         })
       ]),
       default: u(() => [
-        P("div", Ie, [
-          o(r).icons.permissionDenied ? (T(), U(o(G), {
+        R("div", Ie, [
+          o(r).icons.permissionDenied ? (U(), S(o(j), {
             key: 0,
             class: "mr-2"
           }, {
             default: u(() => [
-              b(k(o(r).icons.permissionDenied), 1)
+              A(E(o(r).icons.permissionDenied), 1)
             ]),
             _: 1
-          })) : N("", !0),
-          P("span", null, k(a.value), 1)
+          })) : G("", !0),
+          R("span", null, E(a.value), 1)
         ])
       ]),
       _: 1
     }, 8, ["modelValue"]));
   }
-}), Fe = { class: "text-body-1 mb-4" }, Pe = ["aria-label"], L = 30, Z = "We're having trouble connecting to authentication services.", Ye = /* @__PURE__ */ M({
+}), Ce = { class: "text-body-1 mb-4" }, Pe = ["aria-label"], D = 30, Z = "We're having trouble connecting to authentication services.", Ye = /* @__PURE__ */ N({
   name: "ServiceUnavailableOverlay",
   __name: "ServiceUnavailableOverlay",
   setup(e) {
-    const t = A("ServiceUnavailableOverlay"), r = z(), { error: n } = J(), i = Y(), s = D(L), a = D(L), c = D(!1);
+    const t = _("ServiceUnavailableOverlay"), r = z(), { error: n } = J(), i = Y(), s = B(D), a = B(D), c = B(!1);
     let h = null;
     const g = l(() => n.value?.type === "service_unavailable"), v = l(
       () => n.value?.type === "service_unavailable" && n.value.message || Z
-    ), V = l(() => a.value === 0 ? 0 : Math.floor((a.value - s.value) / a.value * 100));
-    function R(d) {
-      x(), a.value = d, s.value = d, h = setInterval(() => {
-        s.value > 0 && (s.value--, s.value === 0 && $());
+    ), O = l(() => a.value === 0 ? 0 : Math.floor((a.value - s.value) / a.value * 100));
+    function $(d) {
+      T(), a.value = d, s.value = d, h = setInterval(() => {
+        s.value > 0 && (s.value--, s.value === 0 && L());
       }, 1e3);
     }
-    function x() {
+    function T() {
       h && (clearInterval(h), h = null);
     }
-    async function $() {
+    async function L() {
       if (!c.value) {
-        c.value = !0, x(), t.info("Attempting auth service retry");
+        c.value = !0, T(), t.info("Attempting auth service retry");
         try {
-          const d = await _.checkAuth();
+          const d = await k.checkAuth();
           i.clearError(), t.info("Auth service retry successful", { isAuthenticated: d.isAuthenticated });
         } catch (d) {
           t.warn("Auth service retry failed, restarting countdown", d);
-          const m = n.value?.retryAfter ?? L;
-          R(m);
+          const m = n.value?.retryAfter ?? D;
+          $(m);
         } finally {
           c.value = !1;
         }
       }
     }
-    function O() {
-      t.info("User initiated manual retry from service unavailable overlay"), $();
+    function M() {
+      t.info("User initiated manual retry from service unavailable overlay"), L();
     }
     return ue(
       () => n.value,
       (d) => {
         if (d?.type === "service_unavailable") {
-          const m = d.retryAfter ?? L;
-          t.info(`Auth service unavailable, starting countdown: ${m}s`), R(m);
+          const m = d.retryAfter ?? D;
+          t.info(`Auth service unavailable, starting countdown: ${m}s`), $(m);
         } else
-          x();
+          T();
       },
       { immediate: !0 }
     ), ce(() => {
-      x();
-    }), (d, m) => (T(), U(o(pe), {
+      T();
+    }), (d, m) => (U(), S(o(pe), {
       "model-value": g.value,
       persistent: "",
       class: "align-center justify-center",
@@ -910,18 +922,18 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
               class: "text-h5 d-flex align-center justify-center"
             }, {
               default: u(() => [
-                o(r).icons.serviceUnavailable ? (T(), U(o(G), {
+                o(r).icons.serviceUnavailable ? (U(), S(o(j), {
                   key: 0,
                   color: "error",
                   size: "32",
                   class: "mr-2"
                 }, {
                   default: u(() => [
-                    b(k(o(r).icons.serviceUnavailable), 1)
+                    A(E(o(r).icons.serviceUnavailable), 1)
                   ]),
                   _: 1
-                })) : N("", !0),
-                m[0] || (m[0] = b(" Service Issue ", -1))
+                })) : G("", !0),
+                m[0] || (m[0] = A(" Service Issue ", -1))
               ]),
               _: 1
             }),
@@ -930,27 +942,27 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
               class: "text-center"
             }, {
               default: u(() => [
-                P("p", Fe, k(v.value), 1),
-                m[1] || (m[1] = P("p", { class: "text-body-2 text-medium-emphasis mb-4" }, " Retrying automatically... ", -1)),
+                R("p", Ce, E(v.value), 1),
+                m[1] || (m[1] = R("p", { class: "text-body-2 text-medium-emphasis mb-4" }, " Retrying automatically... ", -1)),
                 p(o(me), {
-                  "model-value": V.value,
+                  "model-value": O.value,
                   color: "primary",
                   height: "8",
                   rounded: "",
                   class: "mb-2",
                   "data-testid": "countdown-progress-bar"
                 }, null, 8, ["model-value"]),
-                P("p", {
+                R("p", {
                   class: "text-body-2 text-medium-emphasis",
                   "data-testid": "countdown-text",
                   "aria-label": `Retry in ${s.value} seconds`
-                }, " Retry in " + k(s.value) + "s ", 9, Pe)
+                }, " Retry in " + E(s.value) + "s ", 9, Pe)
               ]),
               _: 1
             }),
             p(o(ie), { class: "justify-center" }, {
               default: u(() => [
-                p(o(j), {
+                p(o(q), {
                   color: "primary",
                   variant: "elevated",
                   "prepend-icon": o(r).icons.retry || void 0,
@@ -958,10 +970,10 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
                   disabled: c.value,
                   "data-testid": "try-now-button",
                   "aria-label": "Try connecting now",
-                  onClick: O
+                  onClick: M
                 }, {
                   default: u(() => [...m[2] || (m[2] = [
-                    b(" Try Now ", -1)
+                    A(" Try Now ", -1)
                   ])]),
                   _: 1
                 }, 8, ["prepend-icon", "loading", "disabled"])
@@ -977,21 +989,21 @@ const X = "Your session has ended. Sign in again to continue.", qe = /* @__PURE_
   }
 });
 export {
-  E as AuthConfigurationError,
+  b as AuthConfigurationError,
   _e as AuthService,
   se as BFF_AUTH_CONFIG_KEY,
   ye as DEFAULT_ICONS,
   ze as PermissionDeniedToast,
   Ye as ServiceUnavailableOverlay,
   qe as SessionExpiredModal,
-  _ as authService,
+  k as authService,
   Oe as bffAuthPlugin,
   Se as createAuthGuard,
-  ke as decodeAccessToken,
-  Ee as decodeJwt,
+  Ee as decodeAccessToken,
+  ke as decodeJwt,
   Ne as extractEmailFromJwt,
-  q as getGlobalConfig,
-  B as isAuthConfigured,
+  x as getGlobalConfig,
+  V as isAuthConfigured,
   Ae as mapErrorType,
   ae as parseAuthError,
   ve as setGlobalConfig,

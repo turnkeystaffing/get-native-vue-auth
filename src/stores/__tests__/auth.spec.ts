@@ -9,6 +9,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '../auth'
 import { authService } from '../../services/auth'
+import { setGlobalConfig, getGlobalConfig } from '../../config'
+import { testConfig } from '../../test-setup'
 import type { CheckAuthResponse, TokenResponse } from '../../types/auth'
 
 // Mock logger
@@ -747,6 +749,119 @@ describe('AuthStore', () => {
 
         expect(store.hasRole('ROLE_USER')).toBe(false)
       })
+    })
+  })
+
+  describe('cookie mode', () => {
+    beforeEach(() => {
+      setGlobalConfig({ ...testConfig, mode: 'cookie' })
+      // Precondition assertion — validates config propagation (AC2)
+      expect(getGlobalConfig()?.mode).toBe('cookie')
+    })
+
+    afterEach(() => {
+      // Restore token mode for other tests
+      setGlobalConfig(testConfig)
+    })
+
+    it('initAuth() sets isAuthenticated without calling ensureValidToken (AC4)', async () => {
+      const mockUser = {
+        user_id: 'user123',
+        session_id: 'session456',
+        created_at: '2025-12-05T00:00:00Z',
+        last_activity: '2025-12-05T01:00:00Z',
+        expires_at: '2025-12-06T00:00:00Z'
+      }
+      vi.mocked(authService.checkAuth).mockResolvedValue({
+        isAuthenticated: true,
+        user: mockUser
+      })
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.isAuthenticated).toBe(true)
+      expect(store.user).toEqual(mockUser)
+      expect(authService.getAccessToken).not.toHaveBeenCalled()
+    })
+
+    it('initAuth() sets user from checkAuth() response (AC6)', async () => {
+      const mockUser = {
+        user_id: 'cookie-user',
+        session_id: 'cookie-session',
+        created_at: '2025-12-05T00:00:00Z',
+        last_activity: '2025-12-05T01:00:00Z',
+        expires_at: '2025-12-06T00:00:00Z'
+      }
+      vi.mocked(authService.checkAuth).mockResolvedValue({
+        isAuthenticated: true,
+        user: mockUser
+      })
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.user).toEqual(mockUser)
+    })
+
+    it('accessToken remains null after initAuth() (AC6)', async () => {
+      vi.mocked(authService.checkAuth).mockResolvedValue({
+        isAuthenticated: true,
+        user: {
+          user_id: 'user123',
+          session_id: 'session456',
+          created_at: '2025-12-05T00:00:00Z',
+          last_activity: '2025-12-05T01:00:00Z',
+          expires_at: '2025-12-06T00:00:00Z'
+        }
+      })
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.accessToken).toBeNull()
+    })
+
+    it('token-derived getters return null/[] in cookie mode (AC6)', async () => {
+      vi.mocked(authService.checkAuth).mockResolvedValue({
+        isAuthenticated: true,
+        user: {
+          user_id: 'user123',
+          session_id: 'session456',
+          created_at: '2025-12-05T00:00:00Z',
+          last_activity: '2025-12-05T01:00:00Z',
+          expires_at: '2025-12-06T00:00:00Z'
+        }
+      })
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.decodedToken).toBeNull()
+      expect(store.userEmail).toBeNull()
+      expect(store.userRoles).toEqual([])
+    })
+
+    it('initAuth() with 401 sets isAuthenticated false and user null (AC7)', async () => {
+      vi.mocked(authService.checkAuth).mockResolvedValue({
+        isAuthenticated: false,
+        user: null
+      })
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(store.user).toBeNull()
+    })
+
+    it('ensureValidToken() returns null immediately without calling _refreshToken (AC5a)', async () => {
+      const store = useAuthStore()
+      const result = await store.ensureValidToken()
+
+      expect(result).toBeNull()
+      expect(authService.getAccessToken).not.toHaveBeenCalled()
+      expect(store.error).toBeNull()
     })
   })
 

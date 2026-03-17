@@ -9,6 +9,13 @@
 import type { Logger } from '@turnkeystaffing/get-native-vue-logger'
 
 /**
+ * Authentication mode
+ * - 'token': Explicit token management with Bearer header injection (default)
+ * - 'cookie': BFF proxy handles auth via session cookies; no token operations
+ */
+export type AuthMode = 'token' | 'cookie'
+
+/**
  * Icon configuration for auth UI components
  *
  * Override any or all icons to use a different icon library (e.g. Font Awesome).
@@ -42,6 +49,9 @@ export interface BffAuthPluginOptions {
 
   /** Custom icons - optional, partial overrides merged with MDI defaults */
   icons?: Partial<AuthIcons>
+
+  /** Authentication mode - 'token' (default) or 'cookie' for BFF cookie-only auth */
+  mode?: AuthMode
 }
 
 /**
@@ -60,4 +70,7 @@ export interface BffAuthConfig {
 
   /** Resolved icon configuration */
   icons: AuthIcons
+
+  /** Resolved authentication mode */
+  mode: AuthMode
 }

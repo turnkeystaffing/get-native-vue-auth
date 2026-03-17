@@ -380,6 +380,13 @@ class AuthService {
    * @throws AuthConfigurationError if auth is not configured
    */
   async getAccessToken(): Promise<TokenResponse | null> {
+    // GUARD: Token operations are not available in cookie mode
+    if (getGlobalConfig()?.mode === 'cookie') {
+      throw new AuthConfigurationError(
+        'getAccessToken() is not available in cookie mode. Token management is handled by the BFF proxy via cookies.'
+      )
+    }
+
     // GUARD: Don't attempt HTTP request if auth is not configured
     if (!isAuthConfigured()) {
       throw new AuthConfigurationError(

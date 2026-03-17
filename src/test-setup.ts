@@ -38,8 +38,11 @@ Object.defineProperty(window, 'matchMedia', {
   }))
 })
 
-// Set default global config for tests
-const testConfig: BffAuthConfig = {
+/**
+ * Default mock config for tests.
+ * Exported so test files can import instead of duplicating.
+ */
+export const testConfig: BffAuthConfig = {
   bffBaseUrl: 'http://localhost:8080',
   clientId: 'test-client',
   logger: {
@@ -54,6 +57,7 @@ const testConfig: BffAuthConfig = {
     permissionDenied: 'mdi-shield-alert',
     serviceUnavailable: 'mdi-cloud-off-outline',
     retry: 'mdi-refresh'
-  }
+  },
+  mode: 'token'
 }
 setGlobalConfig(testConfig)

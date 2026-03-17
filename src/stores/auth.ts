@@ -10,6 +10,7 @@
 
 import { defineStore } from 'pinia'
 import { authService, AuthConfigurationError } from '../services/auth'
+import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { decodeAccessToken } from '../utils/jwt'
 import type { UserInfo, TokenResponse, AuthError, DecodedAccessToken } from '../types/auth'
@@ -174,8 +175,8 @@ export const useAuthStore = defineStore('auth', {
         this.isAuthenticated = result.isAuthenticated
         this.user = result.user
 
-        // If authenticated, prefetch token
-        if (result.isAuthenticated) {
+        // If authenticated, prefetch token (skip in cookie mode)
+        if (result.isAuthenticated && getGlobalConfig()?.mode !== 'cookie') {
           await this.ensureValidToken()
         }
       } catch (error) {
@@ -202,6 +203,11 @@ export const useAuthStore = defineStore('auth', {
      * @returns Access token string or null if session expired
      */
     async ensureValidToken(): Promise<string | null> {
+      // In cookie mode, token operations are not used
+      if (getGlobalConfig()?.mode === 'cookie') {
+        return null
+      }
+
       // Return cached token if still valid (not within 60s buffer)
       if (this.accessToken && !this.checkTokenNeedsRefresh()) {
         return this.accessToken
