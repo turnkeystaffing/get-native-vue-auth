@@ -649,6 +649,7 @@ isAuthenticated: boolean;
 isLoading: boolean;
 user: {
 user_id: string;
+email: string;
 session_id: string;
 created_at: string;
 last_activity: string;
@@ -663,6 +664,7 @@ retryAfter?: number | undefined;
 } | null;
 } & PiniaCustomStateProperties<AuthState>) => {
 user_id: string;
+email: string;
 session_id: string;
 created_at: string;
 last_activity: string;
@@ -676,6 +678,7 @@ isAuthenticated: boolean;
 isLoading: boolean;
 user: {
 user_id: string;
+email: string;
 session_id: string;
 created_at: string;
 last_activity: string;
@@ -698,6 +701,7 @@ isAuthenticated: boolean;
 isLoading: boolean;
 user: {
 user_id: string;
+email: string;
 session_id: string;
 created_at: string;
 last_activity: string;
@@ -819,6 +823,7 @@ clearError(): void;
  */
 export declare interface UserInfo {
     user_id: string;
+    email: string;
     session_id: string;
     created_at: string;
     last_activity: string;

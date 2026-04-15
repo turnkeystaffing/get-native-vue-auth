@@ -48,6 +48,7 @@ describe('AuthService', () => {
     it('returns authenticated user when session is valid (AC1)', async () => {
       const mockUser: UserInfo = {
         user_id: 'user123',
+        email: 'user@example.com',
         session_id: 'session456',
         created_at: '2025-12-05T00:00:00Z',
         last_activity: '2025-12-05T01:00:00Z',

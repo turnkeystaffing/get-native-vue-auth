@@ -81,6 +81,7 @@ describe('AuthStore', () => {
     it('sets authenticated state when session is valid', async () => {
       const mockUser = {
         user_id: 'user123',
+        email: 'user@example.com',
         session_id: 'session456',
         created_at: '2025-12-05T00:00:00Z',
         last_activity: '2025-12-05T01:00:00Z',
@@ -384,6 +385,7 @@ describe('AuthStore', () => {
         isAuthenticated: true,
         user: {
           user_id: 'test',
+          email: 'test@example.com',
           session_id: 'session',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -410,6 +412,7 @@ describe('AuthStore', () => {
         isAuthenticated: true,
         user: {
           user_id: 'test',
+          email: 'test@example.com',
           session_id: 'session',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -445,6 +448,7 @@ describe('AuthStore', () => {
         isAuthenticated: true,
         user: {
           user_id: 'test',
+          email: 'test@example.com',
           session_id: 'session',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -471,6 +475,7 @@ describe('AuthStore', () => {
         isAuthenticated: true,
         user: {
           user_id: 'test',
+          email: 'test@example.com',
           session_id: 'session',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -509,6 +514,7 @@ describe('AuthStore', () => {
         const store = useAuthStore()
         const mockUser = {
           user_id: 'user123',
+          email: 'user@example.com',
           session_id: 'session456',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -767,6 +773,7 @@ describe('AuthStore', () => {
     it('initAuth() sets isAuthenticated without calling ensureValidToken (AC4)', async () => {
       const mockUser = {
         user_id: 'user123',
+        email: 'user@example.com',
         session_id: 'session456',
         created_at: '2025-12-05T00:00:00Z',
         last_activity: '2025-12-05T01:00:00Z',
@@ -788,6 +795,7 @@ describe('AuthStore', () => {
     it('initAuth() sets user from checkAuth() response (AC6)', async () => {
       const mockUser = {
         user_id: 'cookie-user',
+        email: 'cookie-user@example.com',
         session_id: 'cookie-session',
         created_at: '2025-12-05T00:00:00Z',
         last_activity: '2025-12-05T01:00:00Z',
@@ -809,6 +817,7 @@ describe('AuthStore', () => {
         isAuthenticated: true,
         user: {
           user_id: 'user123',
+          email: 'user@example.com',
           session_id: 'session456',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -822,11 +831,12 @@ describe('AuthStore', () => {
       expect(store.accessToken).toBeNull()
     })
 
-    it('token-derived getters return null/[] in cookie mode (AC6)', async () => {
+    it('userEmail falls back to user.email when no access token (AC6)', async () => {
       vi.mocked(authService.checkAuth).mockResolvedValue({
         isAuthenticated: true,
         user: {
           user_id: 'user123',
+          email: 'cookie-user@example.com',
           session_id: 'session456',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',
@@ -838,7 +848,7 @@ describe('AuthStore', () => {
       await store.initAuth()
 
       expect(store.decodedToken).toBeNull()
-      expect(store.userEmail).toBeNull()
+      expect(store.userEmail).toBe('cookie-user@example.com')
       expect(store.userRoles).toEqual([])
     })
 
@@ -873,6 +883,7 @@ describe('AuthStore', () => {
         isLoading: true,
         user: {
           user_id: 'test',
+          email: 'test@example.com',
           session_id: 'session',
           created_at: '2025-12-05T00:00:00Z',
           last_activity: '2025-12-05T01:00:00Z',

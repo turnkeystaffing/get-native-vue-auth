@@ -80,6 +80,7 @@ describe('useAuth', () => {
     it('exposes user from store', () => {
       const mockUser = {
         user_id: 'test-user',
+        email: 'test-user@example.com',
         session_id: 'test-session',
         created_at: '2025-12-05T00:00:00Z',
         last_activity: '2025-12-05T01:00:00Z',

@@ -83,7 +83,7 @@ export const useAuthStore = defineStore('auth', {
      * Returns null if token is not available or email claim is missing.
      */
     userEmail(): string | null {
-      return this.decodedToken?.email ?? null
+      return this.decodedToken?.email ?? this.user?.email ?? null
     },
 
     /**

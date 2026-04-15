@@ -132,7 +132,8 @@ app.use(bffAuthPlugin, {
 - `initAuth()` skips token prefetch (still calls `checkAuth()`)
 - `ensureValidToken()` returns `null` immediately
 - `getAccessToken()` throws `AuthConfigurationError`
-- Token-derived getters (`decodedToken`, `userEmail`, `userRoles`) return `null`/`[]`
+- Token-derived getters (`decodedToken`, `userRoles`) return `null`/`[]`
+- `userEmail` falls back to `user.email` from `/bff/userinfo` (so it still works without a token)
 
 **What stays the same:**
 - Login/logout flows

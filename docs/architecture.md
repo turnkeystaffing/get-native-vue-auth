@@ -126,7 +126,7 @@ All runtime dependencies are **peer dependencies** — they are not bundled into
 
 | Type | Purpose |
 |------|---------|
-| `UserInfo` | User session data from `/bff/userinfo` |
+| `UserInfo` | User session data from `/bff/userinfo` (`user_id`, `email`, `session_id`, `created_at`, `last_activity`, `expires_at`) |
 | `CheckAuthResponse` | Auth check result (`isAuthenticated` + `user`) |
 | `TokenResponse` | Access token response (camelCase frontend) |
 | `BackendTokenResponse` | Token response (snake_case from BFF) |

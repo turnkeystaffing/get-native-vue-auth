@@ -421,7 +421,7 @@ const Y = de("auth", {
      * Returns null if token is not available or email claim is missing.
      */
     userEmail() {
-      return this.decodedToken?.email ?? null;
+      return this.decodedToken?.email ?? this.user?.email ?? null;
     },
     /**
      * User roles from JWT access token.
