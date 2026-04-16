@@ -118,6 +118,7 @@ describe('Auth Guards', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    sessionStorage.clear()
     router = createTestRouter()
   })
 
@@ -409,6 +410,72 @@ describe('Auth Guards', () => {
       // initAuth called once (first protected nav), no other auth calls
       expect(mocks.store.initAuth).toHaveBeenCalledTimes(1)
       expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('login circuit breaker', () => {
+    beforeEach(() => {
+      sessionStorage.clear()
+    })
+
+    it('trips circuit breaker after max login redirects', async () => {
+      const { deps, mocks } = createMockDeps({ isAuthenticated: false })
+      const store = mocks.store as MockStore & { error: { type: string; message: string } | null; setError: ReturnType<typeof vi.fn> }
+      store.setError = vi.fn()
+      router.beforeEach(createAuthGuard(deps))
+
+      // First 3 attempts should call login (each needs a fresh guard since guard is per-router)
+      for (let i = 0; i < 3; i++) {
+        const r = createTestRouter()
+        const { deps: d, mocks: m } = createMockDeps({ isAuthenticated: false })
+        const s = m.store as MockStore & { setError: ReturnType<typeof vi.fn> }
+        s.setError = vi.fn()
+        r.beforeEach(createAuthGuard(d))
+        await r.push('/protected')
+        expect(m.service.login).toHaveBeenCalled()
+        expect(s.setError).not.toHaveBeenCalled()
+      }
+
+      // 4th attempt — circuit breaker should trip
+      const r4 = createTestRouter()
+      const { deps: d4, mocks: m4 } = createMockDeps({ isAuthenticated: false })
+      const s4 = m4.store as MockStore & { setError: ReturnType<typeof vi.fn> }
+      s4.setError = vi.fn()
+      r4.beforeEach(createAuthGuard(d4))
+      await r4.push('/protected')
+
+      expect(m4.service.login).not.toHaveBeenCalled()
+      expect(s4.setError).toHaveBeenCalledWith({
+        type: 'service_unavailable',
+        message: 'Too many login attempts. Authentication service may be unavailable.'
+      })
+    })
+
+    it('resets circuit breaker when authentication succeeds', async () => {
+      // Simulate 2 failed attempts
+      const { deps: d1 } = createMockDeps({ isAuthenticated: false })
+      const s1 = (d1.getAuthStore() as unknown as MockStore & { setError: ReturnType<typeof vi.fn> })
+      s1.setError = vi.fn()
+      const r1 = createTestRouter()
+      r1.beforeEach(createAuthGuard(d1))
+      await r1.push('/protected')
+
+      const { deps: d2 } = createMockDeps({ isAuthenticated: false })
+      const s2 = (d2.getAuthStore() as unknown as MockStore & { setError: ReturnType<typeof vi.fn> })
+      s2.setError = vi.fn()
+      const r2 = createTestRouter()
+      r2.beforeEach(createAuthGuard(d2))
+      await r2.push('/protected')
+
+      expect(sessionStorage.getItem('gn-auth-login-circuit-breaker')).not.toBeNull()
+
+      // Successful auth should reset
+      const { deps: dOk } = createMockDeps({ isAuthenticated: true })
+      const rOk = createTestRouter()
+      rOk.beforeEach(createAuthGuard(dOk))
+      await rOk.push('/protected')
+
+      expect(sessionStorage.getItem('gn-auth-login-circuit-breaker')).toBeNull()
     })
   })
 

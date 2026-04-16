@@ -13,6 +13,7 @@ import { authService, AuthConfigurationError } from '../services/auth'
 import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { decodeAccessToken } from '../utils/jwt'
+import { resetLoginAttempts } from '../utils/loginCircuitBreaker'
 import type { UserInfo, TokenResponse, AuthError, DecodedAccessToken } from '../types/auth'
 
 /** Minimum valid token expiry time in seconds (5 seconds) */
@@ -174,6 +175,10 @@ export const useAuthStore = defineStore('auth', {
 
         this.isAuthenticated = result.isAuthenticated
         this.user = result.user
+
+        if (result.isAuthenticated) {
+          resetLoginAttempts()
+        }
 
         // If authenticated, prefetch token (skip in cookie mode)
         if (result.isAuthenticated && getGlobalConfig()?.mode !== 'cookie') {

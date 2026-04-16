@@ -13,8 +13,10 @@
 import { computed, ref } from 'vue'
 import { VDialog, VCard, VCardTitle, VCardText, VCardActions, VIcon, VSpacer, VBtn } from 'vuetify/components'
 import { useAuth } from '../composables/useAuth'
+import { useAuthStore } from '../stores/auth'
 import { useAuthConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
+import { recordLoginAttempt } from '../utils/loginCircuitBreaker'
 
 defineOptions({ name: 'SessionExpiredModal' })
 
@@ -50,6 +52,18 @@ const errorMessage = computed(() =>
  */
 function handleSignIn() {
   if (isLoading.value) return
+
+  // Circuit breaker: stop redirecting after too many failed attempts
+  if (!recordLoginAttempt()) {
+    logger.warn('Login redirect circuit breaker tripped from session expired modal')
+    const authStore = useAuthStore()
+    authStore.setError({
+      type: 'service_unavailable',
+      message: 'Too many login attempts. Authentication service may be unavailable.'
+    })
+    return
+  }
+
   isLoading.value = true
 
   logger.info('User initiated re-authentication from session expired modal')

@@ -13,6 +13,7 @@ import type { Router, RouteLocationNormalized, NavigationGuard } from 'vue-route
 import { useAuthStore } from '../stores/auth'
 import { authService, AuthConfigurationError } from '../services/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
+import { recordLoginAttempt, resetLoginAttempts } from '../utils/loginCircuitBreaker'
 
 /**
  * Logger for auth guard operations
@@ -94,6 +95,28 @@ export function createAuthGuard(
   // Initialization state is closure-scoped, not module-scoped
   let initialized = false
 
+  /**
+   * Attempt a login redirect, or trip the circuit breaker if too many attempts.
+   * When tripped, sets service_unavailable error to show the overlay instead of looping.
+   */
+  function redirectOrTrip(
+    authSvc: ReturnType<typeof deps.getAuthService>,
+    authStore: ReturnType<typeof deps.getAuthStore>,
+    returnUrl: string
+  ): boolean {
+    if (recordLoginAttempt()) {
+      authSvc.login({ returnUrl })
+      return false // cancel navigation, page will redirect
+    }
+    // Circuit breaker tripped — show overlay instead of looping
+    logger.error('Login redirect circuit breaker tripped')
+    authStore.setError({
+      type: 'service_unavailable',
+      message: 'Too many login attempts. Authentication service may be unavailable.'
+    })
+    return true // allow navigation, overlay will show
+  }
+
   return async (to) => {
     const authStore = deps.getAuthStore()
     const authSvc = deps.getAuthService()
@@ -121,20 +144,17 @@ export function createAuthGuard(
       // If auth timed out, treat as unauthenticated (fail closed for security)
       if (!authReady) {
         logger.warn('Auth not ready, redirecting to login')
-        authSvc.login({ returnUrl: to.fullPath })
-        return false
+        return redirectOrTrip(authSvc, authStore, to.fullPath)
       }
 
       // Check authentication status
       if (authStore.isAuthenticated) {
+        resetLoginAttempts()
         return true
       }
 
       // Not authenticated - redirect to Central Login (BFF handles return URL via redirect_url param)
-      authSvc.login({ returnUrl: to.fullPath })
-
-      // Return false to cancel navigation (page will redirect to Central Login)
-      return false
+      return redirectOrTrip(authSvc, authStore, to.fullPath)
     } catch (error) {
       // Handle configuration errors differently - don't redirect (would cause infinite loop)
       if (error instanceof AuthConfigurationError) {
@@ -149,8 +169,7 @@ export function createAuthGuard(
 
       // Unexpected error - fail closed (redirect to login for security)
       logger.error('Unexpected error in auth guard:', error)
-      authSvc.login({ returnUrl: to.fullPath })
-      return false
+      return redirectOrTrip(authSvc, authStore, to.fullPath)
     }
   }
 }

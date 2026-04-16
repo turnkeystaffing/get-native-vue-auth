@@ -50,6 +50,9 @@ export type { AuthGuardDependencies } from './router/guards'
 export { decodeJwt, extractEmailFromJwt, decodeAccessToken } from './utils/jwt'
 export type { JwtPayload } from './utils/jwt'
 
+// Login circuit breaker
+export { recordLoginAttempt, resetLoginAttempts, isCircuitBroken } from './utils/loginCircuitBreaker'
+
 // Types
 export type {
   UserInfo,

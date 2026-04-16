@@ -414,6 +414,15 @@ export declare function getGlobalConfig(): BffAuthConfig | null;
 export declare function isAuthConfigured(): boolean;
 
 /**
+ * Check if the circuit breaker has tripped without incrementing.
+ * Returns false if the time window has expired (stale state is ignored).
+ *
+ * @param maxAttempts - Maximum allowed attempts (default: 3)
+ * @param windowMs - Time window in ms (default: 120000)
+ */
+export declare function isCircuitBroken(maxAttempts?: number, windowMs?: number): boolean;
+
+/**
  * Standard JWT payload claims we expect from our auth provider.
  * Extend this interface if additional claims are needed.
  */
@@ -488,6 +497,41 @@ export declare function mapErrorType(backendType: BackendAuthError['error_type']
 export declare function parseAuthError(error: AxiosError<BackendAuthError>): AuthError | null;
 
 export declare const PermissionDeniedToast: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+
+/**
+ * Login Redirect Circuit Breaker
+ *
+ * Prevents infinite redirect loops when BFF login and userinfo endpoints
+ * disagree about session validity. Tracks login redirect attempts in
+ * sessionStorage and stops redirecting after a threshold within a time window,
+ * allowing the ServiceUnavailableOverlay to display instead.
+ *
+ * The time window ensures stale state auto-resets — if the user returns
+ * after the window expires, the counter starts fresh. Only rapid successive
+ * redirects (the actual loop) trigger the breaker.
+ *
+ * sessionStorage is used because it survives page reloads (the redirect)
+ * but clears on tab close, so users can always recover by opening a new tab.
+ */
+/**
+ * Record a login redirect attempt.
+ * Returns true if the redirect should proceed, false if the circuit breaker has tripped.
+ *
+ * Attempts are tracked within a time window (default: 2 minutes). If the first
+ * attempt was longer ago than the window, the counter resets automatically.
+ *
+ * Fails open (returns true) if sessionStorage is unavailable (SSR, private browsing quota).
+ *
+ * @param maxAttempts - Maximum allowed attempts before tripping (default: 3)
+ * @param windowMs - Time window in ms for counting attempts (default: 120000)
+ */
+export declare function recordLoginAttempt(maxAttempts?: number, windowMs?: number): boolean;
+
+/**
+ * Reset the login attempt counter.
+ * Call on successful authentication.
+ */
+export declare function resetLoginAttempts(): void;
 
 export declare const ServiceUnavailableOverlay: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
 
