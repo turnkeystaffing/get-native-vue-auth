@@ -15,7 +15,6 @@ import { VOverlay, VCard, VCardTitle, VCardText, VCardActions, VIcon, VProgressL
 import { useAuth } from '../composables/useAuth'
 import { useAuthConfig } from '../config'
 import { useAuthStore } from '../stores/auth'
-import { authService } from '../services/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
 defineOptions({ name: 'ServiceUnavailableOverlay' })
@@ -107,14 +106,22 @@ async function triggerRetry() {
   logger.info('Attempting auth service retry')
 
   try {
-    // Check if auth service is back online via authService.checkAuth()
-    // This is a lightweight connectivity check - not full auth initialization
-    const result = await authService.checkAuth()
+    await authStore.initAuth()
 
-    // If checkAuth succeeds, auth service is back online
-    // Clear the error state to dismiss the overlay
-    authStore.clearError()
-    logger.info('Auth service retry successful', { isAuthenticated: result.isAuthenticated })
+    if (authStore.isAuthenticated) {
+      // Auth succeeded — clear error, overlay dismisses
+      authStore.clearError()
+      logger.info('Auth retry successful, user authenticated')
+    } else if (!authStore.hasError) {
+      // Auth service reachable but session invalid — show session expired modal
+      authStore.setError({
+        type: 'session_expired',
+        message: 'Your session has ended. Sign in again to continue.'
+      })
+      logger.info('Auth service reachable but session invalid')
+    }
+    // If authStore.hasError is already set by initAuth (e.g. service_unavailable),
+    // the overlay stays visible — no action needed
   } catch (err) {
     logger.warn('Auth service retry failed, restarting countdown', err)
 

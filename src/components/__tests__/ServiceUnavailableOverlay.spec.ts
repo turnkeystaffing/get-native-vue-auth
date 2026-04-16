@@ -64,7 +64,6 @@ import ServiceUnavailableOverlay from '../ServiceUnavailableOverlay.vue'
 import { useAuthStore } from '../../stores/auth'
 import { BFF_AUTH_CONFIG_KEY } from '../../config'
 import { DEFAULT_ICONS } from '../../plugin'
-import { authService } from '../../services/auth'
 import { testConfig } from '../../test-setup'
 import type { AuthError } from '../../types/auth'
 import type { BffAuthConfig } from '../../types/config'
@@ -315,29 +314,29 @@ describe('ServiceUnavailableOverlay', () => {
   })
 
   describe('Try Now Action (AC5)', () => {
-    it('"Try Now" button triggers manual retry', async () => {
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+    it('"Try Now" button triggers manual retry via initAuth', async () => {
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
 
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockResolvedValueOnce({ isAuthenticated: true, user: null })
+      const initAuthSpy = vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        authStore.$patch({ isAuthenticated: true, user: null, error: null })
+      })
 
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
       expect(tryNowBtn).toBeTruthy()
       tryNowBtn.click()
       await flushPromises()
 
-      expect(checkAuthSpy).toHaveBeenCalled()
+      expect(initAuthSpy).toHaveBeenCalled()
     })
 
     it('loading state shown on "Try Now" button during retry', async () => {
-      // Mock checkAuth to delay resolution
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      let resolvePromise: (value: { isAuthenticated: boolean; user: null }) => void
-      checkAuthSpy.mockReturnValueOnce(new Promise(resolve => { resolvePromise = resolve }))
-
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
+
+      // Mock initAuth to delay resolution
+      let resolvePromise: () => void
+      vi.spyOn(authStore, 'initAuth').mockReturnValueOnce(new Promise(resolve => { resolvePromise = resolve }))
 
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
       expect(tryNowBtn.hasAttribute('disabled')).toBe(false)
@@ -350,18 +349,17 @@ describe('ServiceUnavailableOverlay', () => {
       expect(tryNowBtn.hasAttribute('disabled')).toBe(true)
 
       // Resolve the promise
-      resolvePromise!({ isAuthenticated: true, user: null })
+      resolvePromise!()
       await flushPromises()
     })
 
     it('countdown pauses during retry attempt', async () => {
-      // Mock checkAuth to delay
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      let resolvePromise: (value: { isAuthenticated: boolean; user: null }) => void
-      checkAuthSpy.mockReturnValueOnce(new Promise(resolve => { resolvePromise = resolve }))
-
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
+
+      // Mock initAuth to delay
+      let resolvePromise: () => void
+      vi.spyOn(authStore, 'initAuth').mockReturnValueOnce(new Promise(resolve => { resolvePromise = resolve }))
 
       // Click Try Now
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
@@ -373,7 +371,7 @@ describe('ServiceUnavailableOverlay', () => {
       await flushPromises()
 
       // Resolve the retry
-      resolvePromise!({ isAuthenticated: true, user: null })
+      resolvePromise!()
       await flushPromises()
     })
 
@@ -382,8 +380,9 @@ describe('ServiceUnavailableOverlay', () => {
       await flushPromises()
 
       const clearErrorSpy = vi.spyOn(authStore, 'clearError')
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockResolvedValueOnce({ isAuthenticated: true, user: null })
+      vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        authStore.$patch({ isAuthenticated: true, user: null, error: null })
+      })
 
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
       tryNowBtn.click()
@@ -392,13 +391,32 @@ describe('ServiceUnavailableOverlay', () => {
       expect(clearErrorSpy).toHaveBeenCalled()
     })
 
-    it('countdown restarts after failed retry', async () => {
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+    it('sets session_expired when initAuth succeeds but user not authenticated', async () => {
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
 
-      // Make checkAuth fail
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockRejectedValueOnce(new Error('Service still down'))
+      const setErrorSpy = vi.spyOn(authStore, 'setError')
+      vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        // initAuth completes without error but user is not authenticated (401 from userinfo)
+        authStore.$patch({ isAuthenticated: false, error: null })
+      })
+
+      const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
+      tryNowBtn.click()
+      await flushPromises()
+
+      expect(setErrorSpy).toHaveBeenCalledWith({
+        type: 'session_expired',
+        message: 'Your session has ended. Sign in again to continue.'
+      })
+    })
+
+    it('countdown restarts after failed retry', async () => {
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+      await flushPromises()
+
+      // Make initAuth throw
+      vi.spyOn(authStore, 'initAuth').mockRejectedValueOnce(new Error('Service still down'))
 
       // Click Try Now
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
@@ -411,12 +429,11 @@ describe('ServiceUnavailableOverlay', () => {
     })
 
     it('concurrent retry prevention (isRetrying guard)', async () => {
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
 
-      // Mock checkAuth to delay
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockReturnValue(new Promise(() => {})) // Never resolves
+      // Mock initAuth to delay
+      const initAuthSpy = vi.spyOn(authStore, 'initAuth').mockReturnValue(new Promise(() => {})) // Never resolves
 
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
 
@@ -427,23 +444,24 @@ describe('ServiceUnavailableOverlay', () => {
       await flushPromises()
 
       // Should only be called once due to isRetrying guard
-      expect(checkAuthSpy).toHaveBeenCalledTimes(1)
+      expect(initAuthSpy).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('Automatic Retry on Countdown Complete (AC6)', () => {
     it('automatic retry triggers when countdown reaches 0', async () => {
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockResolvedValue({ isAuthenticated: true, user: null })
-
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 5 })
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 5 })
       await flushPromises()
+
+      const initAuthSpy = vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        authStore.$patch({ isAuthenticated: true, error: null })
+      })
 
       // Advance time to countdown = 0
       vi.advanceTimersByTime(5000)
       await flushPromises()
 
-      expect(checkAuthSpy).toHaveBeenCalled()
+      expect(initAuthSpy).toHaveBeenCalled()
     })
 
     it('overlay dismisses on successful automatic retry', async () => {
@@ -451,8 +469,9 @@ describe('ServiceUnavailableOverlay', () => {
       await flushPromises()
 
       const clearErrorSpy = vi.spyOn(authStore, 'clearError')
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockResolvedValueOnce({ isAuthenticated: true, user: null })
+      vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        authStore.$patch({ isAuthenticated: true, error: null })
+      })
 
       // Advance time to countdown = 0
       vi.advanceTimersByTime(5000)
@@ -462,11 +481,10 @@ describe('ServiceUnavailableOverlay', () => {
     })
 
     it('countdown restarts after failed automatic retry', async () => {
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockRejectedValueOnce(new Error('Still down'))
-
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 3 })
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 3 })
       await flushPromises()
+
+      vi.spyOn(authStore, 'initAuth').mockRejectedValueOnce(new Error('Still down'))
 
       // Advance time to trigger auto-retry
       vi.advanceTimersByTime(3000)
@@ -674,20 +692,21 @@ describe('ServiceUnavailableOverlay', () => {
     })
   })
 
-  describe('Retry calls authService.checkAuth()', () => {
-    it('retry uses authService.checkAuth() for connectivity check', async () => {
-      const checkAuthSpy = vi.mocked(authService.checkAuth)
-      checkAuthSpy.mockResolvedValueOnce({ isAuthenticated: true, user: null })
-
-      mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
+  describe('Retry calls authStore.initAuth()', () => {
+    it('retry uses authStore.initAuth() for full re-initialization', async () => {
+      const { authStore } = mountComponent({ type: 'service_unavailable', message: 'Service down', retryAfter: 30 })
       await flushPromises()
+
+      const initAuthSpy = vi.spyOn(authStore, 'initAuth').mockImplementation(async () => {
+        authStore.$patch({ isAuthenticated: true, error: null })
+      })
 
       const tryNowBtn = document.body.querySelector('[data-testid="try-now-button"]') as HTMLElement
       tryNowBtn.click()
       await flushPromises()
 
-      // Should call authService.checkAuth(), not any store method
-      expect(checkAuthSpy).toHaveBeenCalled()
+      // Should call authStore.initAuth(), not authService.checkAuth() directly
+      expect(initAuthSpy).toHaveBeenCalled()
     })
   })
 
