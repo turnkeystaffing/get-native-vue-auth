@@ -12,6 +12,11 @@ const cssVars = ref({
   '--bff-auth-accent': '#2563eb',
   '--bff-auth-accent-fg': '#ffffff',
   '--bff-auth-danger': '#d1242f',
+  '--bff-auth-surface': '#ffffff',
+  '--bff-auth-border': 'rgba(0,0,0,0.08)',
+  '--bff-auth-backdrop': 'rgba(0,0,0,0.45)',
+  '--bff-auth-radius': '20px',
+  '--bff-auth-button-radius': '12px',
   '--bff-auth-max-width': '480px'
 })
 
@@ -60,6 +65,11 @@ function toggleDarkMode() {
       '--bff-auth-accent': '#58a6ff',
       '--bff-auth-accent-fg': '#ffffff',
       '--bff-auth-danger': '#f85149',
+      '--bff-auth-surface': '#161b22',
+      '--bff-auth-border': 'rgba(255,255,255,0.08)',
+      '--bff-auth-backdrop': 'rgba(0,0,0,0.6)',
+      '--bff-auth-radius': '20px',
+      '--bff-auth-button-radius': '12px',
       '--bff-auth-max-width': '480px'
     }
   } else {
@@ -70,6 +80,11 @@ function toggleDarkMode() {
       '--bff-auth-accent': '#2563eb',
       '--bff-auth-accent-fg': '#ffffff',
       '--bff-auth-danger': '#d1242f',
+      '--bff-auth-surface': '#ffffff',
+      '--bff-auth-border': 'rgba(0,0,0,0.08)',
+      '--bff-auth-backdrop': 'rgba(0,0,0,0.45)',
+      '--bff-auth-radius': '20px',
+      '--bff-auth-button-radius': '12px',
       '--bff-auth-max-width': '480px'
     }
   }
@@ -89,6 +104,11 @@ function resetTheme() {
     '--bff-auth-accent': '#2563eb',
     '--bff-auth-accent-fg': '#ffffff',
     '--bff-auth-danger': '#d1242f',
+    '--bff-auth-surface': '#ffffff',
+    '--bff-auth-border': 'rgba(0,0,0,0.08)',
+    '--bff-auth-backdrop': 'rgba(0,0,0,0.45)',
+    '--bff-auth-radius': '20px',
+    '--bff-auth-button-radius': '12px',
     '--bff-auth-max-width': '480px'
   }
 }
@@ -101,16 +121,29 @@ function resetTheme() {
     <section class="demo-section">
       <h2>Trigger Error States</h2>
       <div class="button-group">
-        <button class="btn btn-warning" @click="triggerSessionExpired">
+        <button
+          class="btn btn-warning"
+          @click="triggerSessionExpired"
+        >
           Session Expired
         </button>
-        <button class="btn btn-danger" @click="triggerServiceUnavailable">
+        <button
+          class="btn btn-danger"
+          @click="triggerServiceUnavailable"
+        >
           Service Unavailable
         </button>
-        <button class="btn btn-muted" @click="triggerPermissionDenied">
+        <button
+          class="btn btn-muted"
+          @click="triggerPermissionDenied"
+        >
           Permission Denied (no overlay)
         </button>
-        <button class="btn btn-clear" @click="clearError" :disabled="!authStore.hasError">
+        <button
+          class="btn btn-clear"
+          :disabled="!authStore.hasError"
+          @click="clearError"
+        >
           Clear Error
         </button>
       </div>
@@ -119,7 +152,13 @@ function resetTheme() {
     <section class="demo-section">
       <h2>Retry After (seconds)</h2>
       <div class="slider-row">
-        <input type="range" v-model.number="retryAfter" min="5" max="120" step="5" />
+        <input
+          v-model.number="retryAfter"
+          type="range"
+          min="5"
+          max="120"
+          step="5"
+        >
         <span class="slider-value">{{ retryAfter }}s</span>
       </div>
     </section>
@@ -127,38 +166,54 @@ function resetTheme() {
     <section class="demo-section">
       <h2>Current Store State</h2>
       <pre class="state-display">{{ JSON.stringify({
-  error: authStore.error,
-  isAuthenticated: authStore.isAuthenticated,
-  isLoading: authStore.isLoading,
-  hasError: authStore.hasError
-}, null, 2) }}</pre>
+        error: authStore.error,
+        isAuthenticated: authStore.isAuthenticated,
+        isLoading: authStore.isLoading,
+        hasError: authStore.hasError
+      }, null, 2) }}</pre>
     </section>
 
     <section class="demo-section">
       <h2>Theme Controls</h2>
-      <div class="button-group" style="margin-bottom: 12px;">
-        <button class="btn" :class="darkMode ? 'btn-warning' : 'btn-muted'" @click="toggleDarkMode">
+      <div
+        class="button-group"
+        style="margin-bottom: 12px;"
+      >
+        <button
+          class="btn"
+          :class="darkMode ? 'btn-warning' : 'btn-muted'"
+          @click="toggleDarkMode"
+        >
           {{ darkMode ? 'Light Mode' : 'Dark Mode' }}
         </button>
-        <button class="btn btn-clear" @click="resetTheme">Reset Theme</button>
+        <button
+          class="btn btn-clear"
+          @click="resetTheme"
+        >
+          Reset Theme
+        </button>
       </div>
       <div class="theme-grid">
-        <label v-for="(value, key) in cssVars" :key="key" class="theme-field">
+        <label
+          v-for="(value, key) in cssVars"
+          :key="key"
+          class="theme-field"
+        >
           <span class="theme-label">{{ key }}</span>
           <div class="theme-input-row">
             <input
               v-if="!String(key).includes('width')"
               type="color"
               :value="value"
-              @input="cssVars[key] = ($event.target as HTMLInputElement).value; applyTheme()"
               class="color-input"
-            />
+              @input="cssVars[key] = ($event.target as HTMLInputElement).value; applyTheme()"
+            >
             <input
               type="text"
               :value="value"
-              @input="cssVars[key] = ($event.target as HTMLInputElement).value; applyTheme()"
               class="text-input"
-            />
+              @input="cssVars[key] = ($event.target as HTMLInputElement).value; applyTheme()"
+            >
           </div>
         </label>
       </div>
