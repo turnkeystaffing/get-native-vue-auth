@@ -12,7 +12,7 @@
 
 ## Quick Reference
 
-- **Tech Stack:** Vue 3 + Pinia + Axios + Vue Router + Vuetify + jwt-decode
+- **Tech Stack:** Vue 3 + Pinia + Axios + Vue Router + jwt-decode (no UI framework dependency as of v2.0.0)
 - **Entry Point:** `src/index.ts`
 - **Architecture Pattern:** Vue Plugin with Composition API, Pinia Store, Service Layer
 - **Build:** Vite 7 library mode → `dist/index.js` (ES module)
@@ -24,7 +24,7 @@
 - [Project Overview](./project-overview.md) — Executive summary, purpose, tech stack
 - [Architecture](./architecture.md) — Module architecture, data flows, type system, BFF API contract
 - [Source Tree Analysis](./source-tree-analysis.md) — Annotated directory structure with file descriptions
-- [Component Inventory](./component-inventory.md) — 3 Vuetify error UI components catalog
+- [Component Inventory](./component-inventory.md) — `AuthErrorBoundary` + default views catalog (v2.0.0)
 - [Development Guide](./development-guide.md) — Prerequisites, setup, build, test, publish
 
 ## Existing Documentation

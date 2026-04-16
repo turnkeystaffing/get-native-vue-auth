@@ -7,7 +7,7 @@
  * - Vue composable for component integration
  * - Axios interceptors for automatic token injection
  * - Vue Router guards for route protection
- * - Pre-built UI components for auth error handling
+ * - Zero-framework `AuthErrorBoundary` for session-expired and service-unavailable UX
  *
  * @see README.md for usage instructions
  */
@@ -72,10 +72,12 @@ export type {
   BffAuthPluginOptions,
   BffAuthConfig,
   AuthIcons,
+  AuthText,
+  AuthErrorViews,
+  SessionExpiredViewProps,
+  ServiceUnavailableViewProps,
   AuthMode
 } from './types'
 
 // Components
-export { default as SessionExpiredModal } from './components/SessionExpiredModal.vue'
-export { default as PermissionDeniedToast } from './components/PermissionDeniedToast.vue'
-export { default as ServiceUnavailableOverlay } from './components/ServiceUnavailableOverlay.vue'
+export { default as AuthErrorBoundary } from './components/AuthErrorBoundary.vue'

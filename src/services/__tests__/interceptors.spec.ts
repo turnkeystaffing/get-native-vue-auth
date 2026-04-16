@@ -64,12 +64,13 @@ describe('Auth Interceptors', () => {
         debug: vi.fn()
       } as any,
       icons: {
-        sessionExpired: 'mdi-clock-alert-outline',
-        login: 'mdi-login',
-        permissionDenied: 'mdi-shield-alert',
-        serviceUnavailable: 'mdi-cloud-off-outline',
-        retry: 'mdi-refresh'
+        sessionExpired: false,
+        login: false,
+        serviceUnavailable: false,
+        retry: false
       },
+      errorViews: {},
+      text: {},
       mode: 'token'
     }
     setGlobalConfig(mockConfig)
@@ -560,12 +561,13 @@ describe('Auth Interceptors', () => {
         clientId: 'test-client',
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
         icons: {
-          sessionExpired: 'mdi-clock-alert-outline',
-          login: 'mdi-login',
-          permissionDenied: 'mdi-shield-alert',
-          serviceUnavailable: 'mdi-cloud-off-outline',
-          retry: 'mdi-refresh'
+          sessionExpired: false,
+          login: false,
+          serviceUnavailable: false,
+          retry: false
         },
+        errorViews: {},
+        text: {},
         mode: 'cookie'
       })
 
@@ -592,12 +594,13 @@ describe('Auth Interceptors', () => {
         clientId: 'test-client',
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
         icons: {
-          sessionExpired: 'mdi-clock-alert-outline',
-          login: 'mdi-login',
-          permissionDenied: 'mdi-shield-alert',
-          serviceUnavailable: 'mdi-cloud-off-outline',
-          retry: 'mdi-refresh'
+          sessionExpired: false,
+          login: false,
+          serviceUnavailable: false,
+          retry: false
         },
+        errorViews: {},
+        text: {},
         mode: 'cookie'
       })
 
@@ -622,12 +625,13 @@ describe('Auth Interceptors', () => {
         clientId: 'test-client',
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
         icons: {
-          sessionExpired: 'mdi-clock-alert-outline',
-          login: 'mdi-login',
-          permissionDenied: 'mdi-shield-alert',
-          serviceUnavailable: 'mdi-cloud-off-outline',
-          retry: 'mdi-refresh'
+          sessionExpired: false,
+          login: false,
+          serviceUnavailable: false,
+          retry: false
         },
+        errorViews: {},
+        text: {},
         mode: 'cookie'
       })
 

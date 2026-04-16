@@ -996,7 +996,6 @@ __metadata:
     vue: "npm:^3.4.0"
     vue-eslint-parser: "npm:^10.2.0"
     vue-router: "npm:^4.0.0"
-    vuetify: "npm:^3.0.0"
   peerDependencies:
     "@turnkeystaffing/get-native-vue-logger": ^1.0.0
     axios: ^1.6.0
@@ -1004,7 +1003,6 @@ __metadata:
     pinia: ^3.0.4
     vue: ^3.4.0
     vue-router: ^4.0.0
-    vuetify: ^3.0.0
   languageName: unknown
   linkType: soft
 
@@ -4627,25 +4625,6 @@ __metadata:
     typescript:
       optional: true
   checksum: 10c0/4cac1905bed3865314cfd32971989ec0f2a47bbdca4969aa5a90afc452b17fd9d650734953a72baf2f2385c8fdeace8b6a93fb7621d282149d26dd70c2d71118
-  languageName: node
-  linkType: hard
-
-"vuetify@npm:^3.0.0":
-  version: 3.12.5
-  resolution: "vuetify@npm:3.12.5"
-  peerDependencies:
-    typescript: ">=4.7"
-    vite-plugin-vuetify: ">=2.1.0"
-    vue: ^3.5.0
-    webpack-plugin-vuetify: ">=3.1.0"
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-    vite-plugin-vuetify:
-      optional: true
-    webpack-plugin-vuetify:
-      optional: true
-  checksum: 10c0/b20fc3f8b53646193c36aa324fb90d99c5af874139db98f7ccb3fd05d561f06348370c88b1712cf928da95ac589b7e1851efb2b7628995292fab7a8ccff5cf8b
   languageName: node
   linkType: hard
 

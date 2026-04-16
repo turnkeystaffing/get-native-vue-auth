@@ -15,7 +15,7 @@ This library encapsulates all authentication concerns for Vue 3 applications in 
 - **Session lifecycle** — init, check, login, logout
 - **Token management** — acquisition, refresh, injection into API calls
 - **Route protection** — Vue Router guards blocking unauthenticated access
-- **Error handling** — typed error states with pre-built Vuetify UI components
+- **Error handling** — typed error states surfaced through a single self-contained `AuthErrorBoundary` (no UI framework dependency as of v2.0.0)
 - **JWT utilities** — decode tokens, extract user claims
 
 The library supports two authentication flows:
@@ -31,7 +31,7 @@ The library supports two authentication flows:
 | State | Pinia ^3.0.4 |
 | HTTP | Axios ^1.6.0 |
 | Router | Vue Router ^4.0.0 |
-| UI | Vuetify ^3.0.0 |
+| UI | None — bundled CSS + FluentUI SVG paths (v2.0.0+) |
 | Build | Vite 7 (library mode, ES module) |
 | Test | Vitest 4, @vue/test-utils, jsdom |
 | Package Mgr | Yarn 4.12.0 |
@@ -53,7 +53,7 @@ src/
 ├── stores/           # Pinia auth store
 ├── services/         # AuthService + Axios interceptors
 ├── router/           # Auth guards
-├── components/       # 3 Vuetify error UI components
+├── components/       # AuthErrorBoundary + default views + bundled FluentUI icons
 ├── types/            # TypeScript interfaces
 └── utils/            # JWT utilities
 ```

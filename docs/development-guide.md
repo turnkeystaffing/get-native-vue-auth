@@ -58,7 +58,7 @@ The library is built using Vite 7 in library mode:
 - **Output:** `dist/index.js` (ES module, ~27KB) + `dist/index.d.ts` (rolled-up declarations, ~21KB)
 - **Format:** ES module only
 - **Externals:** All peer dependencies are excluded from the bundle:
-  - `vue`, `pinia`, `axios`, `vue-router`, `jwt-decode`, `vuetify`, `vuetify/components`, `vuetify/directives`, `@turnkeystaffing/get-native-vue-logger`
+  - `vue`, `pinia`, `axios`, `vue-router`, `jwt-decode`, `@turnkeystaffing/get-native-vue-logger`
 - **Declaration Generation:** `vite-plugin-dts` with `rollupTypes: true` for a single `.d.ts` file
 
 ## Testing
@@ -68,7 +68,6 @@ The library is built using Vite 7 in library mode:
 - **Framework:** Vitest 4
 - **Environment:** jsdom
 - **Setup file:** `src/test-setup.ts`
-- **Vuetify:** Inlined in test dependencies for component rendering
 - **CSS:** Enabled in test environment
 
 ### Test File Convention
@@ -100,9 +99,9 @@ src/
 | `composables/useAuth.ts` | `composables/__tests__/useAuth.spec.ts` | Composable reactivity |
 | `utils/jwt.ts` | `utils/__tests__/jwt.spec.ts` | JWT decode utilities |
 | `router/guards.ts` | `router/__tests__/guards.spec.ts` | Route guard logic |
-| `components/SessionExpiredModal.vue` | `components/__tests__/SessionExpiredModal.spec.ts` | Modal rendering & interactions |
-| `components/PermissionDeniedToast.vue` | `components/__tests__/PermissionDeniedToast.spec.ts` | Toast rendering & auto-dismiss |
-| `components/ServiceUnavailableOverlay.vue` | `components/__tests__/ServiceUnavailableOverlay.spec.ts` | Overlay rendering & retry |
+| `components/AuthErrorBoundary.vue` | `components/__tests__/AuthErrorBoundary.spec.ts` | View selection, Teleport, body-scroll lock, sign-in/retry wiring |
+| `components/views/SessionExpiredView.vue` | `components/views/__tests__/SessionExpiredView.spec.ts` | Session-expired view rendering, text/icon overrides, onSignIn |
+| `components/views/ServiceUnavailableView.vue` | `components/views/__tests__/ServiceUnavailableView.spec.ts` | Countdown, auto-retry, retryAfter reactivity, unmount cleanup |
 
 ## Publishing
 

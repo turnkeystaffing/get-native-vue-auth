@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import { AxiosInstance } from 'axios';
+import { Component } from 'vue';
 import { ComponentOptionsMixin } from 'vue';
 import { ComponentProvideOptions } from 'vue';
 import { ComputedRef } from 'vue';
@@ -30,6 +31,11 @@ export declare interface AuthError {
     retryAfter?: number;
 }
 
+export declare const AuthErrorBoundary: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {
+overlayRoot: HTMLDivElement;
+viewRef: unknown;
+}, any>;
+
 /**
  * Auth error types mapped from backend error_type
  * PAT-004: Error type mapping
@@ -41,6 +47,18 @@ export declare interface AuthError {
 export declare type AuthErrorType = 'session_expired' | 'permission_denied' | 'service_unavailable';
 
 /**
+ * Escape-hatch: replace the default error views entirely.
+ *
+ * Props contract (stable public API from v2.0.0):
+ * - `sessionExpired` receives {@link SessionExpiredViewProps}
+ * - `serviceUnavailable` receives {@link ServiceUnavailableViewProps}
+ */
+export declare interface AuthErrorViews {
+    sessionExpired?: Component;
+    serviceUnavailable?: Component;
+}
+
+/**
  * Auth guard dependencies for dependency injection
  */
 export declare interface AuthGuardDependencies {
@@ -49,22 +67,20 @@ export declare interface AuthGuardDependencies {
 }
 
 /**
- * Icon configuration for auth UI components
+ * Icon configuration for auth UI components.
  *
- * Override any or all icons to use a different icon library (e.g. Font Awesome).
- * Defaults to MDI (Material Design Icons) strings.
+ * Values are Vue component refs (so bundled FluentUI icons can be swapped for
+ * any consumer icon library) or `false` to disable the icon entirely.
  */
 export declare interface AuthIcons {
-    /** Icon for session expired title (default: 'mdi-clock-alert-outline', false to disable) */
-    sessionExpired: string | false;
-    /** Icon for login/sign-in button (default: 'mdi-login', false to disable) */
-    login: string | false;
-    /** Icon for permission denied toast (default: 'mdi-shield-alert', false to disable) */
-    permissionDenied: string | false;
-    /** Icon for service unavailable title (default: 'mdi-cloud-off-outline', false to disable) */
-    serviceUnavailable: string | false;
-    /** Icon for retry button (default: 'mdi-refresh', false to disable) */
-    retry: string | false;
+    /** Icon for session expired view title (false to disable) */
+    sessionExpired: Component | false;
+    /** Icon for login/sign-in button (false to disable) */
+    login: Component | false;
+    /** Icon for service unavailable view title (false to disable) */
+    serviceUnavailable: Component | false;
+    /** Icon for retry button (false to disable) */
+    retry: Component | false;
 }
 
 /**
@@ -225,6 +241,26 @@ export declare interface AuthStoreInterface {
 }
 
 /**
+ * Per-state text overrides for default error views.
+ *
+ * Omitted fields fall back to the plugin's built-in English copy.
+ */
+export declare interface AuthText {
+    sessionExpired?: {
+        title?: string;
+        message?: string;
+        button?: string;
+    };
+    serviceUnavailable?: {
+        title?: string;
+        message?: string;
+        button?: string;
+        retryingLabel?: string;
+        countdownLabel?: (seconds: number) => string;
+    };
+}
+
+/**
  * Backend error response structure (ADR-003)
  */
 export declare interface BackendAuthError {
@@ -264,6 +300,10 @@ export declare interface BffAuthConfig {
     logger: Logger;
     /** Resolved icon configuration */
     icons: AuthIcons;
+    /** Resolved view overrides (empty object if consumer provided none) */
+    errorViews: AuthErrorViews;
+    /** Resolved text overrides (empty object if consumer provided none) */
+    text: AuthText;
     /** Resolved authentication mode */
     mode: AuthMode;
 }
@@ -271,8 +311,11 @@ export declare interface BffAuthConfig {
 /**
  * BFF Auth Vue Plugin
  *
- * Installs authentication functionality into a Vue application.
- * Provides configuration via Vue's dependency injection system.
+ * Installs authentication functionality into a Vue application and registers
+ * `AuthErrorBoundary` globally so consumers can place `<AuthErrorBoundary />`
+ * anywhere in their template.
+ *
+ * Requires `createPinia()` to have been installed on the app first.
  */
 export declare const bffAuthPlugin: Plugin_2<[BffAuthPluginOptions]>;
 
@@ -286,8 +329,12 @@ export declare interface BffAuthPluginOptions {
     clientId: string;
     /** Custom logger instance - optional, uses default logger if not provided */
     logger?: Logger;
-    /** Custom icons - optional, partial overrides merged with MDI defaults */
+    /** Icon overrides merged with bundled FluentUI defaults */
     icons?: Partial<AuthIcons>;
+    /** Full view replacements — takes precedence over icons/text when provided */
+    errorViews?: AuthErrorViews;
+    /** Per-state text overrides for default views */
+    text?: AuthText;
     /** Authentication mode - 'token' (default) or 'cookie' for BFF cookie-only auth */
     mode?: AuthMode;
 }
@@ -379,9 +426,10 @@ export declare interface DecodedAccessToken {
 export declare function decodeJwt(token: string | null | undefined): JwtPayload | null;
 
 /**
- * Default icon strings (MDI - Material Design Icons)
+ * Default icons (bundled FluentUI SVG components).
  *
- * Consumers can override any/all via the `icons` plugin option.
+ * Consumers can override any/all via the `icons` plugin option, or set to
+ * `false` to disable a specific icon.
  */
 export declare const DEFAULT_ICONS: AuthIcons;
 
@@ -496,15 +544,13 @@ export declare function mapErrorType(backendType: BackendAuthError['error_type']
  */
 export declare function parseAuthError(error: AxiosError<BackendAuthError>): AuthError | null;
 
-export declare const PermissionDeniedToast: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
-
 /**
  * Login Redirect Circuit Breaker
  *
  * Prevents infinite redirect loops when BFF login and userinfo endpoints
  * disagree about session validity. Tracks login redirect attempts in
  * sessionStorage and stops redirecting after a threshold within a time window,
- * allowing the ServiceUnavailableOverlay to display instead.
+ * allowing the service-unavailable view to display instead.
  *
  * The time window ensures stale state auto-resets — if the user returns
  * after the window expires, the counter starts fresh. Only rapid successive
@@ -533,9 +579,26 @@ export declare function recordLoginAttempt(maxAttempts?: number, windowMs?: numb
  */
 export declare function resetLoginAttempts(): void;
 
-export declare const ServiceUnavailableOverlay: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * service-unavailable view. Stable public API from v2.0.0.
+ */
+export declare interface ServiceUnavailableViewProps {
+    error: AuthError;
+    onRetry: () => void | Promise<void>;
+    config: BffAuthConfig;
+    retryAfter: number;
+}
 
-export declare const SessionExpiredModal: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * session-expired view. Stable public API from v2.0.0.
+ */
+export declare interface SessionExpiredViewProps {
+    error: AuthError;
+    onSignIn: () => void | Promise<void>;
+    config: BffAuthConfig;
+}
 
 /* Excluded from this release type: setGlobalConfig */
 

@@ -17,7 +17,7 @@ A Vue 3 authentication plugin library implementing the BFF (Backend-for-Frontend
 | State Management | Pinia | ^3.0.4 |
 | HTTP Client | Axios | ^1.6.0 |
 | Router | Vue Router | ^4.0.0 |
-| UI Framework | Vuetify | ^3.0.0 |
+| UI Framework | None (bundled CSS + FluentUI SVGs, v2.0.0+) | n/a |
 | JWT | jwt-decode | ^4.0.0 |
 | Logging | @turnkeystaffing/get-native-vue-logger | ^1.0.0 |
 | Build | Vite 7 (library mode) | ^7.0.0 |
@@ -73,16 +73,16 @@ All runtime dependencies are **peer dependencies** — they are not bundled into
 │   logout, user, isLoading, error             │
 └──────────────────────┬──────────────────────┘
                        │
-       ┌───────────────┼───────────────┐
-       ▼               ▼               ▼
-┌────────────┐  ┌────────────┐  ┌────────────────┐
-│  router/   │  │ services/  │  │  components/   │
-│ guards.ts  │  │ intercep-  │  │                │
-│            │  │ tors.ts    │  │ SessionExpired │
-│ beforeEach │  │            │  │ Permission...  │
-│ guard      │  │ Axios req/ │  │ ServiceUn...   │
-│            │  │ res hooks  │  │                │
-└────────────┘  └────────────┘  └────────────────┘
+       ┌───────────────┼────────────────────┐
+       ▼               ▼                    ▼
+┌────────────┐  ┌────────────┐  ┌──────────────────────┐
+│  router/   │  │ services/  │  │  components/         │
+│ guards.ts  │  │ intercep-  │  │                      │
+│            │  │ tors.ts    │  │ AuthErrorBoundary    │
+│ beforeEach │  │            │  │ + views/SessionExp   │
+│ guard      │  │ Axios req/ │  │ + views/ServiceUnav  │
+│            │  │ res hooks  │  │ + icons/*            │
+└────────────┘  └────────────┘  └──────────────────────┘
 ```
 
 ## Data Flow
@@ -115,10 +115,10 @@ All runtime dependencies are **peer dependencies** — they are not bundled into
 1. Axios response interceptor catches auth errors (401, 403, 503)
 2. `parseAuthError()` maps backend `error_type` to frontend `AuthErrorType`
 3. `authStore.setError({ type, message })` updates store
-4. UI components react to error state:
-   - `session_expired` → `SessionExpiredModal` (persistent modal)
-   - `permission_denied` → `PermissionDeniedToast` (auto-dismiss 5s)
-   - `service_unavailable` → `ServiceUnavailableOverlay` (retry countdown)
+4. `<AuthErrorBoundary />` (consumer-placed, plugin-registered) reacts to the error state:
+   - `session_expired` → `SessionExpiredView` (full-viewport overlay with Sign In)
+   - `service_unavailable` → `ServiceUnavailableView` (full-viewport overlay with retry countdown)
+   - `permission_denied` → plugin UI is a no-op; the error stays on the store for the consumer to surface
 
 ## Type System
 
@@ -140,9 +140,11 @@ All runtime dependencies are **peer dependencies** — they are not bundled into
 
 | Type | Purpose |
 |------|---------|
-| `BffAuthPluginOptions` | Plugin install options (bffBaseUrl, clientId, logger?, icons?) |
+| `BffAuthPluginOptions` | Plugin install options (bffBaseUrl, clientId, logger?, icons?, text?, errorViews?, mode?) |
 | `BffAuthConfig` | Resolved config with defaults applied |
-| `AuthIcons` | Icon config per component (string or false to disable) |
+| `AuthIcons` | Per-view icon config (`Component \| false`) |
+| `AuthText` | Per-state copy overrides (title/message/button/countdown) |
+| `AuthErrorViews` | Full view replacements (`sessionExpired`, `serviceUnavailable`) |
 
 ## BFF API Contract
 
@@ -163,8 +165,7 @@ All requests include cookies for session management (BFF pattern).
 - **Framework:** Vitest 4 with jsdom environment
 - **Component Testing:** @vue/test-utils for Vue component mounting
 - **Coverage:** Co-located tests in `__tests__/` directories
-- **Test Files:** 8 spec files covering all modules
-- **Vuetify:** Inlined in test dependencies for component rendering
+- **Test Files:** Spec files co-located with the modules they cover
 
 ## Build & Distribution
 

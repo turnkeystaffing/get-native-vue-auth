@@ -4,7 +4,7 @@
  * Prevents infinite redirect loops when BFF login and userinfo endpoints
  * disagree about session validity. Tracks login redirect attempts in
  * sessionStorage and stops redirecting after a threshold within a time window,
- * allowing the ServiceUnavailableOverlay to display instead.
+ * allowing the service-unavailable view to display instead.
  *
  * The time window ensures stale state auto-resets — if the user returns
  * after the window expires, the counter starts fresh. Only rapid successive

@@ -15,14 +15,21 @@ get-native-vue-auth/
 │   ├── shims-vue.d.ts                # Vue SFC type declarations
 │   ├── test-setup.ts                 # Vitest global test setup
 │   │
-│   ├── components/                   # Pre-built Vuetify UI components for auth errors
-│   │   ├── SessionExpiredModal.vue       # Modal shown when session expires
-│   │   ├── PermissionDeniedToast.vue     # Toast notification for 403 errors
-│   │   ├── ServiceUnavailableOverlay.vue # Full-screen overlay for service outages
+│   ├── components/                   # Auth error UI (no UI framework dependency, v2.0.0+)
+│   │   ├── AuthErrorBoundary.vue         # ★ Public — consumer-placed boundary component
+│   │   ├── views/
+│   │   │   ├── SessionExpiredView.vue        # Default session-expired view
+│   │   │   ├── ServiceUnavailableView.vue    # Default service-unavailable view w/ countdown
+│   │   │   └── __tests__/
+│   │   │       ├── SessionExpiredView.spec.ts
+│   │   │       └── ServiceUnavailableView.spec.ts
+│   │   ├── icons/                         # Bundled FluentUI SVG icon SFCs (MIT, © Microsoft)
+│   │   │   ├── IconSessionExpired.vue
+│   │   │   ├── IconLogin.vue
+│   │   │   ├── IconServiceUnavailable.vue
+│   │   │   └── IconRetry.vue
 │   │   └── __tests__/
-│   │       ├── SessionExpiredModal.spec.ts
-│   │       ├── PermissionDeniedToast.spec.ts
-│   │       └── ServiceUnavailableOverlay.spec.ts
+│   │       └── AuthErrorBoundary.spec.ts
 │   │
 │   ├── composables/                  # Vue 3 Composition API composables
 │   │   ├── useAuth.ts                    # Primary composable: isAuthenticated, login, logout, etc.
@@ -63,7 +70,7 @@ get-native-vue-auth/
 ├── package.json                      # Package manifest, peer deps, scripts
 ├── tsconfig.json                     # TypeScript configuration (ES2020, strict, bundler resolution)
 ├── vite.config.ts                    # Vite library build config, externalized peer deps
-├── vitest.config.ts                  # Vitest config (jsdom environment, Vuetify inline)
+├── vitest.config.ts                  # Vitest config (jsdom environment)
 ├── yarn.lock                         # Yarn 4 lockfile
 └── README.md                         # Usage documentation and API reference
 ```
@@ -77,7 +84,7 @@ get-native-vue-auth/
 | `src/stores/` | State management | `auth.ts` (Pinia store) |
 | `src/composables/` | Vue integration | `useAuth.ts` (composable) |
 | `src/router/` | Route protection | `guards.ts` (auth guards) |
-| `src/components/` | Error UI | 3 Vuetify components |
+| `src/components/` | Error UI | `AuthErrorBoundary`, two default views, four bundled icon SFCs |
 | `src/types/` | Type definitions | `auth.ts`, `config.ts` |
 | `src/utils/` | Helpers | `jwt.ts` (token utilities) |
 | `dist/` | Build output | `index.js`, `index.d.ts` |

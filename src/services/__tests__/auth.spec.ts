@@ -235,7 +235,7 @@ describe('AuthService', () => {
         expect(() =>
           authService.loginWithCustomClient({
             clientId: 'spa-client',
-            // eslint-disable-next-line no-script-url
+             
             returnUrl: 'javascript:alert(1)'
           })
         ).toThrow('returnUrl must use http or https scheme')
@@ -725,7 +725,8 @@ describe('AuthService', () => {
   describe('plugin mode validation', () => {
     it('throws error when mode is invalid', () => {
       const mockApp = {
-        provide: vi.fn()
+        provide: vi.fn(),
+        component: vi.fn()
       } as any
 
       expect(() =>
@@ -739,7 +740,8 @@ describe('AuthService', () => {
 
     it('throws error when mode is empty string', () => {
       const mockApp = {
-        provide: vi.fn()
+        provide: vi.fn(),
+        component: vi.fn()
       } as any
 
       expect(() =>
@@ -753,7 +755,8 @@ describe('AuthService', () => {
 
     it('accepts valid mode values without throwing', () => {
       const mockApp = {
-        provide: vi.fn()
+        provide: vi.fn(),
+        component: vi.fn()
       } as any
 
       expect(() =>

@@ -1,6 +1,8 @@
 # @turnkeystaffing/get-native-vue-auth
 
-Vue 3 authentication plugin for BFF (Backend for Frontend) authentication flows. Provides session management, token handling, router guards, and error UI components.
+Vue 3 authentication plugin for BFF (Backend for Frontend) authentication flows. Provides session management, token handling, router guards, and a zero-framework error boundary component.
+
+> **2.0.0 breaking change:** Vuetify is no longer a peer dependency. The three previous error components (`SessionExpiredModal`, `PermissionDeniedToast`, `ServiceUnavailableOverlay`) have been replaced with a single `AuthErrorBoundary` component that ships with built-in FluentUI SVG icons, CSS custom properties for theming, and consumer-overridable views. See the [Migration from 1.x](#migration-from-1x) section below.
 
 ## Installation
 
@@ -29,9 +31,11 @@ yarn add @turnkeystaffing/get-native-vue-auth
 ### Peer Dependencies
 
 ```bash
-yarn add vue@^3.4.0 pinia@^3.0.4 axios@^1.6.0 vue-router@^4.0.0 vuetify@^3.0.0 jwt-decode@^4.0.0
+yarn add vue@^3.4.0 pinia@^3.0.4 axios@^1.6.0 vue-router@^4.0.0 jwt-decode@^4.0.0
 yarn add @turnkeystaffing/get-native-vue-logger
 ```
+
+Vuetify is **not** required in 2.x — the plugin ships its own presentation layer.
 
 ## Quick Start
 
@@ -93,27 +97,23 @@ setupAuthInterceptors(apiClient, () => useAuthStore())
 export default apiClient
 ```
 
-### 4. Add Error Components
+### 4. Add the Auth Error Boundary
+
+The plugin registers `AuthErrorBoundary` globally during `app.use(bffAuthPlugin, ...)`. Place a single tag anywhere in your app shell — it renders a full-viewport overlay via `<Teleport to="body">` whenever the auth store reports `session_expired` or `service_unavailable`:
 
 ```vue
 <!-- App.vue -->
 <template>
   <router-view />
-
-  <!-- Auth error UI components -->
-  <SessionExpiredModal />
-  <PermissionDeniedToast />
-  <ServiceUnavailableOverlay />
+  <AuthErrorBoundary />
 </template>
-
-<script setup lang="ts">
-import {
-  SessionExpiredModal,
-  PermissionDeniedToast,
-  ServiceUnavailableOverlay
-} from '@turnkeystaffing/get-native-vue-auth'
-</script>
 ```
+
+The boundary:
+- Watches `useAuth().error` reactively.
+- Renders the built-in `SessionExpiredView` or `ServiceUnavailableView` based on error type — no DOM footprint otherwise.
+- Locks body scroll and moves focus to the primary action while visible; restores both on dismiss.
+- Does **not** render UI for `permission_denied` — the store still exposes the error so consumers can show their own non-blocking toast if they want one.
 
 ### Cookie Mode (BFF Proxy Auth)
 
@@ -140,7 +140,7 @@ app.use(bffAuthPlugin, {
 - `checkAuth()` via `/bff/userinfo`
 - Response interceptor (401/403/503 error handling)
 - Router guards
-- Error UI components
+- `AuthErrorBoundary` error UI
 
 **Important:** When using cookie mode with `setupAuthInterceptors` on your own Axios instances, you must configure `withCredentials: true` as a default on those instances so cookies are sent with requests.
 
@@ -295,36 +295,93 @@ const email = extractEmailFromJwt(accessToken)
 | `clientId` | `string` | Yes | OAuth client ID |
 | `logger` | `Logger` | No | Custom logger instance |
 | `mode` | `'token' \| 'cookie'` | No | Auth mode: `'token'` (default) manages JWTs; `'cookie'` relies on BFF session cookies |
-| `icons` | `Partial<AuthIcons>` | No | Override or disable component icons |
+| `icons` | `Partial<AuthIcons>` | No | Swap individual icons (Vue component refs) or set to `false` to hide one |
+| `text` | `AuthText` | No | Per-state copy overrides for title/message/button/countdown |
+| `errorViews` | `AuthErrorViews` | No | Replace the default views entirely with your own Vue components |
+
+### Theming via CSS custom properties
+
+The default views scope these custom properties under `.bff-auth-overlay`. Set them at `:root` (or any ancestor) to theme the overlay without overriding any selectors:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `--bff-auth-bg` | `#ffffff` (light) / `#0d1117` (dark) | Overlay background |
+| `--bff-auth-fg` | `#1f2328` (light) / `#e6edf3` (dark) | Title and body text |
+| `--bff-auth-muted` | `#57606a` (light) / `#8b949e` (dark) | Secondary text |
+| `--bff-auth-accent` | `#2563eb` | Primary button + progress bar |
+| `--bff-auth-accent-fg` | `#ffffff` | Primary button label |
+| `--bff-auth-danger` | `#d1242f` | Service-unavailable icon tint |
+| `--bff-auth-max-width` | `480px` | Content column width |
+| `--bff-auth-z-index` | `2147483000` | Stacking layer (high, always-on-top) |
+| `--bff-auth-font-family` | `inherit` | Font stack |
 
 ### Custom Icons
 
-Override default MDI icons with any icon library, or set to `false` to disable individual icons:
+Icons are Vue component refs in 2.x — swap in any icon from your own library, or set to `false` to disable:
 
 ```typescript
+import MySessionIcon from '@/icons/MySessionIcon.vue'
+
 app.use(bffAuthPlugin, {
   bffBaseUrl: 'https://api.example.com',
   clientId: 'my-app',
   icons: {
-    // Use Font Awesome instead of MDI
-    sessionExpired: 'fa-solid fa-clock',
-    login: 'fa-solid fa-right-to-bracket',
-    // Disable specific icons entirely
-    permissionDenied: false,
-    retry: false
+    sessionExpired: MySessionIcon, // Your own component
+    retry: false                    // Hide the retry icon entirely
   }
 })
 ```
 
-| Icon | Default | Used In |
-|------|---------|---------|
-| `sessionExpired` | `mdi-clock-alert-outline` | SessionExpiredModal title |
-| `login` | `mdi-login` | SessionExpiredModal sign-in button |
-| `permissionDenied` | `mdi-shield-alert` | PermissionDeniedToast |
-| `serviceUnavailable` | `mdi-cloud-off-outline` | ServiceUnavailableOverlay title |
-| `retry` | `mdi-refresh` | ServiceUnavailableOverlay try-now button |
+| Icon | Default (bundled FluentUI SVG) | Used In |
+|------|--------------------------------|---------|
+| `sessionExpired` | `clock_24_regular` | Session expired view title |
+| `login` | `arrow_right_24_regular` | Sign-in button |
+| `serviceUnavailable` | `cloud_off_24_regular` | Service unavailable view title |
+| `retry` | `arrow_clockwise_24_regular` | Try-now button |
 
-Each icon accepts a `string` (icon class name) or `false` (disables the icon).
+Each icon accepts a Vue component ref or `false` to hide it.
+
+### Custom Copy
+
+Override any of the default English strings per state:
+
+```typescript
+app.use(bffAuthPlugin, {
+  // ...
+  text: {
+    sessionExpired: {
+      title: 'Votre session a expiré',
+      message: 'Veuillez vous reconnecter.',
+      button: 'Se connecter'
+    },
+    serviceUnavailable: {
+      title: 'Service indisponible',
+      button: 'Réessayer',
+      retryingLabel: 'Tentative en cours...',
+      countdownLabel: (s) => `Nouvelle tentative dans ${s} s`
+    }
+  }
+})
+```
+
+### Full View Replacement
+
+For total control, swap the built-in views for your own. Custom views receive a stable prop contract (public API from 2.0.0):
+
+```typescript
+import CustomSessionExpired from '@/auth/CustomSessionExpired.vue'
+import CustomServiceUnavailable from '@/auth/CustomServiceUnavailable.vue'
+
+app.use(bffAuthPlugin, {
+  // ...
+  errorViews: {
+    sessionExpired: CustomSessionExpired,       // receives { error, onSignIn, config }
+    serviceUnavailable: CustomServiceUnavailable // receives { error, onRetry, config, retryAfter }
+  }
+})
+```
+
+The `onSignIn` / `onRetry` handlers encapsulate the circuit-breaker and `initAuth` logic — call them and the plugin will update store state accordingly.
 
 ### Route Meta
 
@@ -340,17 +397,9 @@ Mark routes as public (no auth required):
 
 ## Components
 
-### SessionExpiredModal
+### AuthErrorBoundary
 
-Displays a persistent modal when the session expires, prompting the user to sign in again.
-
-### PermissionDeniedToast
-
-Shows a non-blocking toast notification when the user lacks permission for an action. Auto-dismisses after 5 seconds.
-
-### ServiceUnavailableOverlay
-
-Full-screen overlay with retry countdown when the auth service is unavailable. Includes automatic retry and manual "Try Now" button.
+The single component you place in your app shell. Watches the auth store and renders a full-viewport overlay via `<Teleport to="body">` for `session_expired` (sign-in view) and `service_unavailable` (retry view with countdown). Locks body scroll, moves focus to the primary action on show, restores focus on dismiss. Does not render for `permission_denied` — consumers handle that error themselves.
 
 ## Error Types
 
@@ -397,13 +446,93 @@ interface AuthError {
 - `extractEmailFromJwt` - Extract email from JWT
 
 ### Components
-- `SessionExpiredModal` - Session expired modal
-- `PermissionDeniedToast` - Permission denied toast
-- `ServiceUnavailableOverlay` - Service unavailable overlay
+- `AuthErrorBoundary` - Consumer-placed error boundary (also auto-registered globally during `app.use(bffAuthPlugin, ...)`)
 
 ### Types
-- `AuthMode`, `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
+- `AuthMode`, `UserInfo`, `AuthError`, `AuthErrorType`, `AuthIcons`, `AuthText`, `AuthErrorViews`, `TokenResponse`, `CheckAuthResponse`, `BackendAuthError`, `LogoutResponse`
 - `TwoFactorErrorCode`, `TwoFactorSetupResponse`, `TwoFactorVerifyResponse`, `TwoFactorResendResponse`, `TwoFactorErrorResponse`
+
+## Migration from 1.x
+
+2.0.0 is a breaking release that drops Vuetify as a peer dependency. The wire-up changes are small:
+
+### 1. Remove Vuetify (if it was only installed for this plugin)
+
+```bash
+yarn remove vuetify
+```
+
+If your app uses Vuetify for other features, keep it — the plugin just doesn't require it anymore.
+
+### 2. Replace the three error components with one
+
+Before (1.x):
+
+```vue
+<template>
+  <router-view />
+  <SessionExpiredModal />
+  <PermissionDeniedToast />
+  <ServiceUnavailableOverlay />
+</template>
+
+<script setup lang="ts">
+import {
+  SessionExpiredModal,
+  PermissionDeniedToast,
+  ServiceUnavailableOverlay
+} from '@turnkeystaffing/get-native-vue-auth'
+</script>
+```
+
+After (2.x):
+
+```vue
+<template>
+  <router-view />
+  <AuthErrorBoundary />
+</template>
+```
+
+No import is needed — the plugin registers `AuthErrorBoundary` globally during `app.use()`. If you prefer an explicit import, `AuthErrorBoundary` is also re-exported from the package.
+
+### 3. Update the `icons` option (if you customized it)
+
+Icons are now Vue component refs instead of MDI class strings. The `permissionDenied` field is removed.
+
+```diff
+ app.use(bffAuthPlugin, {
+   bffBaseUrl: '...',
+   clientId: '...',
+-  icons: {
+-    sessionExpired: 'mdi-clock-alert-outline',
+-    login: 'mdi-login',
+-    permissionDenied: 'mdi-shield-alert',
+-    serviceUnavailable: 'mdi-cloud-off-outline',
+-    retry: 'mdi-refresh'
+-  }
++  icons: {
++    sessionExpired: MyClockIcon, // Vue component ref
++    login: false                 // or `false` to hide
++  }
+ })
+```
+
+If you didn't set `icons`, no change is needed — the plugin ships sensible FluentUI SVG defaults.
+
+### 4. Handle `permission_denied` yourself
+
+The plugin no longer renders UI for `permission_denied`. The store still tracks the error, so continue reading it via `useAuth()` or `useAuthStore()` and render whatever notification your app design calls for:
+
+```ts
+const { error, clearError } = useAuth()
+watch(error, (e) => {
+  if (e?.type === 'permission_denied') {
+    myToast.show(e.message)
+    clearError()
+  }
+})
+```
 
 ## License
 
