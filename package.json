@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "vite build",
+    "demo": "vite --config vite.config.demo.ts",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
