@@ -35,12 +35,22 @@ import IconRetry from './components/icons/IconRetry.vue'
  *
  * Consumers can override any/all via the `icons` plugin option, or set to
  * `false` to disable a specific icon.
+ *
+ * The three new categories (`devError`, `accountBlocked`, `serverError`) reuse
+ * `IconServiceUnavailable` by default since these are "something's not right"
+ * states; consumers that want category-specific artwork should override.
+ * `signOut` reuses `IconLogin` — it's a directional-door icon that reads
+ * symmetrically for sign-in and sign-out.
  */
 export const DEFAULT_ICONS: AuthIcons = {
   sessionExpired: IconSessionExpired,
   login: IconLogin,
   serviceUnavailable: IconServiceUnavailable,
-  retry: IconRetry
+  retry: IconRetry,
+  devError: IconServiceUnavailable,
+  accountBlocked: IconServiceUnavailable,
+  serverError: IconServiceUnavailable,
+  signOut: IconLogin
 }
 
 function validateOptions(options: BffAuthPluginOptions): void {
@@ -65,7 +75,9 @@ function createConfig(options: BffAuthPluginOptions): BffAuthConfig {
     icons: { ...DEFAULT_ICONS, ...options.icons },
     errorViews: options.errorViews ?? {},
     text: options.text ?? {},
-    mode: options.mode ?? 'token'
+    mode: options.mode ?? 'token',
+    onUnmappedError: options.onUnmappedError,
+    errorCodeOverrides: options.errorCodeOverrides
   }
 }
 

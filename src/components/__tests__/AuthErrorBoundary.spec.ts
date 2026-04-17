@@ -54,7 +54,11 @@ function installConfig(overrides: Partial<BffAuthConfig> = {}) {
       sessionExpired: IconStub,
       login: IconStub,
       serviceUnavailable: IconStub,
-      retry: IconStub
+      retry: IconStub,
+      devError: IconStub,
+      accountBlocked: IconStub,
+      serverError: IconStub,
+      signOut: IconStub
     },
     errorViews: {},
     text: {},
@@ -87,15 +91,39 @@ describe('AuthErrorBoundary', () => {
     expect(document.body.style.overflow).toBe('')
   })
 
-  it('renders nothing when error.type is permission_denied (plugin does not handle it)', async () => {
+  it('renders DevErrorView when error.type is dev_error', async () => {
     mount(AuthErrorBoundary, { attachTo: document.body })
     const store = useAuthStore()
-    store.setError({ type: 'permission_denied', message: 'nope' })
+    store.setError({ type: 'dev_error', message: 'bad client', code: 'invalid_client' })
     await nextTick()
 
-    expect(document.querySelector('[data-testid="session-expired-view"]')).toBeNull()
-    expect(document.querySelector('[data-testid="service-unavailable-view"]')).toBeNull()
-    expect(document.body.style.overflow).toBe('')
+    expect(document.querySelector('[data-testid="dev-error-view"]')).not.toBeNull()
+  })
+
+  it('renders AccountBlockedView when error.type is account_blocked', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    store.setError({
+      type: 'account_blocked',
+      message: 'inactive',
+      code: 'account_inactive'
+    })
+    await nextTick()
+
+    expect(document.querySelector('[data-testid="account-blocked-view"]')).not.toBeNull()
+  })
+
+  it('renders ServerErrorView when error.type is server_error', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    store.setError({
+      type: 'server_error',
+      message: 'boom',
+      code: 'internal_error'
+    })
+    await nextTick()
+
+    expect(document.querySelector('[data-testid="server-error-view"]')).not.toBeNull()
   })
 
   it('renders SessionExpiredView via Teleport when error.type is session_expired', async () => {
@@ -115,10 +143,54 @@ describe('AuthErrorBoundary', () => {
   it('renders ServiceUnavailableView when error.type is service_unavailable', async () => {
     mount(AuthErrorBoundary, { attachTo: document.body })
     const store = useAuthStore()
-    store.setError({ type: 'service_unavailable', message: '503', retryAfter: 12 })
+    store.setError({ type: 'service_unavailable', message: '503' })
     await nextTick()
 
     expect(document.querySelector('[data-testid="service-unavailable-view"]')).not.toBeNull()
+  })
+
+  it('invokes authStore.logout when Sign out is clicked from AccountBlockedView', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    const logoutSpy = vi.spyOn(store, 'logout').mockResolvedValue(undefined)
+
+    store.setError({
+      type: 'account_blocked',
+      message: 'inactive',
+      code: 'account_inactive'
+    })
+    await nextTick()
+
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-testid="account-blocked-sign-out-button"]'
+    )
+    expect(button).not.toBeNull()
+    button!.click()
+    await nextTick()
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('invokes authStore.logout when Sign out is clicked from DevErrorView', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    const logoutSpy = vi.spyOn(store, 'logout').mockResolvedValue(undefined)
+
+    store.setError({
+      type: 'dev_error',
+      message: 'bad client',
+      code: 'invalid_client'
+    })
+    await nextTick()
+
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-testid="dev-error-sign-out-button"]'
+    )
+    expect(button).not.toBeNull()
+    button!.click()
+    await nextTick()
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1)
   })
 
   it('locks body scroll while an error view is visible and restores on clear', async () => {
@@ -243,13 +315,12 @@ describe('AuthErrorBoundary', () => {
     expect(document.activeElement).toBe(button)
   })
 
-  it('sanitizes malformed retryAfter to the 30s default', async () => {
+  it('uses the fixed 30s default countdown for service_unavailable', async () => {
     mount(AuthErrorBoundary, { attachTo: document.body })
     const store = useAuthStore()
     store.setError({
       type: 'service_unavailable',
-      message: '503',
-      retryAfter: Number.NaN as unknown as number
+      message: '503'
     })
     await nextTick()
 

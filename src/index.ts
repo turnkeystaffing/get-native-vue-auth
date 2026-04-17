@@ -33,10 +33,17 @@ export {
   AuthService,
   AuthConfigurationError,
   parseAuthError,
-  mapErrorType,
   isAuthConfigured
 } from './services/auth'
 export type { LoginCredentials, LoginOptions, LoginWithCustomClientOptions, CompleteOAuthFlowOptions } from './services/auth'
+
+// Error-code map + helpers
+export {
+  ERROR_CODE_TO_TYPE,
+  KNOWN_INLINE_CODES,
+  mapErrorCodeToType,
+  statusFallbackType
+} from './services/errorCodeMap'
 
 // Interceptors
 export { setupAuthInterceptors } from './services/interceptors'
@@ -76,6 +83,10 @@ export type {
   AuthErrorViews,
   SessionExpiredViewProps,
   ServiceUnavailableViewProps,
+  DevErrorViewProps,
+  AccountBlockedViewProps,
+  ServerErrorViewProps,
+  UnmappedErrorHook,
   AuthMode
 } from './types'
 

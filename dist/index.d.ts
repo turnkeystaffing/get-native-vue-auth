@@ -15,6 +15,17 @@ import { Router } from 'vue-router';
 import { StoreDefinition } from 'pinia';
 
 /**
+ * Props passed to a consumer-provided replacement for the default
+ * account-blocked view. Covers both `account_inactive` and
+ * `insufficient_permissions`; the copy branches on `error.code`.
+ */
+export declare interface AccountBlockedViewProps {
+    error: AuthError;
+    onSignOut: () => void | Promise<void>;
+    config: BffAuthConfig;
+}
+
+/**
  * Error thrown when auth configuration is missing or invalid.
  * This prevents redirect loops when BFF_BASE_URL is not configured.
  */
@@ -23,12 +34,19 @@ export declare class AuthConfigurationError extends Error {
 }
 
 /**
- * Auth error structure for frontend error handling
+ * Auth error structure for frontend error handling.
+ *
+ * View behavior is driven entirely by `type` (recovery category) and `code`
+ * (lowercased backend code, e.g., `insufficient_permissions`, `reauth_required`).
+ * No auxiliary data is carried on the error; views render from code alone.
+ *
+ * @see PAT-004 Error type mapping
  */
 export declare interface AuthError {
     type: AuthErrorType;
     message: string;
-    retryAfter?: number;
+    /** Lowercased backend error code (e.g., `reauth_required`, `account_inactive`) */
+    code?: string;
 }
 
 export declare const AuthErrorBoundary: DefineComponent<    {}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {
@@ -37,14 +55,21 @@ viewRef: unknown;
 }, any>;
 
 /**
- * Auth error types mapped from backend error_type
- * PAT-004: Error type mapping
+ * Auth error types — five recovery categories.
  *
- * - session_expired: 401 - authentication_error
- * - permission_denied: 403 - authorization_error
- * - service_unavailable: 503 - auth_service_unavailable
+ * Each type corresponds to a distinct user-recovery UX:
+ * - `session_expired`: re-authenticate (clears auth state)
+ * - `service_unavailable`: wait and retry (countdown UI, does not clear auth)
+ * - `dev_error`: OAuth client misconfiguration — terminal; "Contact developer" CTA (does not clear auth)
+ * - `account_blocked`: account disabled or insufficient permissions — terminal; "Sign out" CTA (clears auth)
+ * - `server_error`: unhandled server/infra failure — terminal; shows `request_id` for support (does not clear auth)
+ *
+ * Routing is driven by a lowercased error-code table (`ERROR_CODE_TO_TYPE`) with
+ * HTTP-status fallbacks when the code is absent.
+ *
+ * @see PAT-004 Error type mapping
  */
-export declare type AuthErrorType = 'session_expired' | 'permission_denied' | 'service_unavailable';
+export declare type AuthErrorType = 'session_expired' | 'service_unavailable' | 'dev_error' | 'account_blocked' | 'server_error';
 
 /**
  * Escape-hatch: replace the default error views entirely.
@@ -52,10 +77,16 @@ export declare type AuthErrorType = 'session_expired' | 'permission_denied' | 's
  * Props contract (stable public API from v2.0.0):
  * - `sessionExpired` receives {@link SessionExpiredViewProps}
  * - `serviceUnavailable` receives {@link ServiceUnavailableViewProps}
+ * - `devError` receives {@link DevErrorViewProps}
+ * - `accountBlocked` receives {@link AccountBlockedViewProps}
+ * - `serverError` receives {@link ServerErrorViewProps}
  */
 export declare interface AuthErrorViews {
     sessionExpired?: Component;
     serviceUnavailable?: Component;
+    devError?: Component;
+    accountBlocked?: Component;
+    serverError?: Component;
 }
 
 /**
@@ -81,6 +112,14 @@ export declare interface AuthIcons {
     serviceUnavailable: Component | false;
     /** Icon for retry button (false to disable) */
     retry: Component | false;
+    /** Icon for dev-error view title (false to disable) */
+    devError: Component | false;
+    /** Icon for account-blocked view title (false to disable) */
+    accountBlocked: Component | false;
+    /** Icon for server-error view title (false to disable) */
+    serverError: Component | false;
+    /** Icon for "Sign out" CTA on terminal views (false to disable) */
+    signOut: Component | false;
 }
 
 /**
@@ -258,16 +297,44 @@ export declare interface AuthText {
         retryingLabel?: string;
         countdownLabel?: (seconds: number) => string;
     };
+    devError?: {
+        title?: string;
+        message?: string;
+        contactLine?: string;
+        signOut?: string;
+    };
+    accountBlocked?: {
+        title?: string;
+        message?: string;
+        insufficientPermissionsTitle?: string;
+        insufficientPermissionsMessage?: string;
+        signOut?: string;
+    };
+    serverError?: {
+        title?: string;
+        message?: string;
+        dismissButton?: string;
+    };
 }
 
 /**
- * Backend error response structure (ADR-003)
+ * Backend error response body.
+ *
+ * Canonical shape (RFC 6749 style):
+ *
+ *     { "error": "ERROR_CODE", "error_description": "Human-readable description" }
+ *
+ * `error` is widened to `string` because backend emits both RFC 6749 lowercase
+ * codes (`invalid_grant`) and `UPPER_CASE` Auth API codes (`MISSING_TOKEN`). The
+ * interceptor normalizes via `mapErrorCodeToType` (lowercases).
+ *
+ * @see PAT-004 Error type mapping
  */
 export declare interface BackendAuthError {
-    detail: string;
-    error_type: 'authentication_error' | 'authorization_error' | 'auth_service_unavailable';
-    required_scope?: string;
-    retry_after?: number;
+    /** Error code (any casing) — lowercased before routing through the code→category map */
+    error?: string;
+    /** Human-readable description; used as `AuthError.message` */
+    error_description?: string;
 }
 
 /**
@@ -306,6 +373,10 @@ export declare interface BffAuthConfig {
     text: AuthText;
     /** Resolved authentication mode */
     mode: AuthMode;
+    /** Resolved drift callback (undefined if consumer provided none) */
+    onUnmappedError?: UnmappedErrorHook;
+    /** Resolved code→category overrides (undefined if consumer provided none) */
+    errorCodeOverrides?: Record<string, AuthErrorType | null>;
 }
 
 /**
@@ -337,6 +408,22 @@ export declare interface BffAuthPluginOptions {
     text?: AuthText;
     /** Authentication mode - 'token' (default) or 'cookie' for BFF cookie-only auth */
     mode?: AuthMode;
+    /**
+     * Callback fired when the interceptor encounters an unmapped error code.
+     *
+     * Use this to surface backend/frontend map drift in production telemetry.
+     * @see UnmappedErrorHook
+     */
+    onUnmappedError?: UnmappedErrorHook;
+    /**
+     * Per-consumer overrides for the code→category map.
+     *
+     * Keys must be lowercase; values may be any `AuthErrorType` or `null`
+     * (marks the code as inline/silent — treated like `KNOWN_INLINE_CODES`).
+     *
+     * Overrides shallow-merge *over* the canonical `ERROR_CODE_TO_TYPE` map.
+     */
+    errorCodeOverrides?: Record<string, AuthErrorType | null>;
 }
 
 /**
@@ -430,8 +517,35 @@ export declare function decodeJwt(token: string | null | undefined): JwtPayload 
  *
  * Consumers can override any/all via the `icons` plugin option, or set to
  * `false` to disable a specific icon.
+ *
+ * The three new categories (`devError`, `accountBlocked`, `serverError`) reuse
+ * `IconServiceUnavailable` by default since these are "something's not right"
+ * states; consumers that want category-specific artwork should override.
+ * `signOut` reuses `IconLogin` — it's a directional-door icon that reads
+ * symmetrically for sign-in and sign-out.
  */
 export declare const DEFAULT_ICONS: AuthIcons;
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * dev-error view. Terminal view — no retry / no re-login path.
+ *
+ * `onSignOut` calls `authStore.logout()` so the user has a non-destructive
+ * escape hatch to switch accounts.
+ */
+export declare interface DevErrorViewProps {
+    error: AuthError;
+    onSignOut: () => void | Promise<void>;
+    config: BffAuthConfig;
+}
+
+/**
+ * Canonical lowercase backend-code → recovery-category table.
+ *
+ * Freezing ensures consumers cannot mutate the table in place; use
+ * `mapErrorCodeToType(code, overrides)` to extend per-call.
+ */
+export declare const ERROR_CODE_TO_TYPE: Readonly<Record<string, AuthErrorType>>;
 
 /**
  * Extract the email claim from a JWT token.
@@ -492,6 +606,20 @@ export declare interface JwtPayload {
 }
 
 /**
+ * Inline/form error codes (Category 5 in `docs/error-handling-analysis.md`).
+ *
+ * These are *recognized* as handled by caller code (inline form validation,
+ * toast, session-management UI, etc.). The interceptor does NOT call `setError`
+ * or `onUnmappedError` for these — they propagate as rejections and the caller
+ * renders the UI.
+ *
+ * Note: `invalid_token` appears in both this category (email-verification link
+ * expiry) AND the tokens-&-sessions category (JWT/session invalidation). The
+ * interceptor treats it as `session_expired`; email flows can filter locally.
+ */
+export declare const KNOWN_INLINE_CODES: ReadonlySet<string>;
+
+/**
  * Login credentials for BFF authentication
  */
 export declare interface LoginCredentials {
@@ -534,15 +662,46 @@ export declare interface LogoutResponse {
 }
 
 /**
- * Map backend error_type to frontend AuthErrorType
- * PAT-004: Error type mapping
+ * Map a backend error code to its recovery category.
+ *
+ * Lowercases the input before lookup. Consults `overrides` first, then the
+ * canonical `ERROR_CODE_TO_TYPE` map. Returns `null` for:
+ * - known inline codes (caller handles inline)
+ * - unknown codes (interceptor falls back to `statusFallbackType` and reports drift)
+ * - codes explicitly mapped to `null` via `overrides` (treated as inline/silent)
+ *
+ * @param code - Backend error code (any casing); `null`/`undefined` returns `null`
+ * @param overrides - Optional per-call shallow-merge overrides (keyed lowercase)
+ * @returns The matched `AuthErrorType`, or `null` if inline/unknown/override-null
+ *
+ * @see PAT-004 Error type mapping
  */
-export declare function mapErrorType(backendType: BackendAuthError['error_type']): AuthErrorType;
+export declare function mapErrorCodeToType(code: string | null | undefined, overrides?: Record<string, AuthErrorType | null>): AuthErrorType | null;
 
 /**
- * Parse auth error from Axios error response
+ * Parse auth error from an Axios error response.
+ *
+ * Reads only `error` (code) and `error_description` (message) from the body.
+ * Lowercases the code and routes through the canonical code→category table
+ * with optional consumer overrides. Views render based on `AuthError.code` —
+ * no auxiliary data is carried through.
+ *
+ * Returns `null` when:
+ * - the response carries no code (caller applies HTTP-status fallback)
+ * - the code is a `KNOWN_INLINE_CODES` member (caller handles inline)
+ * - the code is unknown (caller reports drift)
+ * - an `overrides` entry explicitly maps the code to `null`
+ *
+ * This function does NOT apply `statusFallbackType` — the interceptor owns
+ * status-based fallbacks because only it has enough context
+ * (`onUnmappedError`, etc.) to distinguish a naked-status error from drift.
+ *
+ * @param error - The Axios error
+ * @param overrides - Optional per-call code→category overrides
+ *
+ * @see PAT-004 Error type mapping
  */
-export declare function parseAuthError(error: AxiosError<BackendAuthError>): AuthError | null;
+export declare function parseAuthError(error: AxiosError<BackendAuthError>, overrides?: Record<string, AuthErrorType | null>): AuthError | null;
 
 /**
  * Login Redirect Circuit Breaker
@@ -581,13 +740,26 @@ export declare function resetLoginAttempts(): void;
 
 /**
  * Props passed to a consumer-provided replacement for the default
- * service-unavailable view. Stable public API from v2.0.0.
+ * server-error view. Renders a Dismiss action that calls
+ * `authStore.clearError()` via the `dismiss` event.
+ *
+ * Events:
+ * - `dismiss` — consumer requests overlay close; `AuthErrorBoundary`
+ *   listens and calls `authStore.clearError()`.
+ */
+export declare interface ServerErrorViewProps {
+    error: AuthError;
+    config: BffAuthConfig;
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * service-unavailable view.
  */
 export declare interface ServiceUnavailableViewProps {
     error: AuthError;
     onRetry: () => void | Promise<void>;
     config: BffAuthConfig;
-    retryAfter: number;
 }
 
 /**
@@ -626,14 +798,20 @@ export declare function setupAuthGuard(router: Router): void;
  * - Adds Authorization: Bearer {token} header for authenticated users
  *
  * Response interceptor:
- * - Parses structured auth errors using parseAuthError()
- * - Sets auth store error state for 401 (session_expired)
- * - Sets auth store error state for 403 (permission_denied)
- * - Sets auth store error state for 503 with auth_service_unavailable
- * - Always propagates error to caller
+ * - Routes `error` (lowercased) through the canonical code→category map
+ *   (merged with consumer `errorCodeOverrides` from plugin config).
+ * - Synthesizes `{ type: 'service_unavailable', code: 'rate_limit_exceeded' }`
+ *   for 429 responses without a code.
+ * - Emits `onUnmappedError(code, status, error)` + `console.warn` (dev only)
+ *   when the code is non-empty, not in the merged map, and not inline.
+ * - Preserves the 401-without-code fallback (`session_expired`) and the
+ *   `isAuthConfigured()` guard that suppresses errors when no config is set.
+ * - Always propagates the rejection to the caller.
  *
  * @param axiosInstance - Axios instance to configure (should be for protected endpoints only)
  * @param getAuthStore - Function to get auth store (avoids circular deps)
+ *
+ * @see PAT-004 Error type mapping
  *
  * @example
  * ```typescript
@@ -645,6 +823,25 @@ export declare function setupAuthGuard(router: Router): void;
  * ```
  */
 export declare function setupAuthInterceptors(axiosInstance: AxiosInstance, getAuthStore: () => AuthStoreInterface): void;
+
+/**
+ * HTTP-status fallback used when the response body carries no `error_type` /
+ * `error` field at all.
+ *
+ * - `401` → `session_expired` (generic re-login prompt)
+ * - `429` → `service_unavailable`
+ * - anything else → `null` (no overlay)
+ *
+ * Note: bare `503` is NOT mapped here — the prior behavior only overlaid 503
+ * when `error_type === 'auth_service_unavailable'`. A bare 503 without an auth
+ * code is not necessarily an auth error and must not trigger the overlay.
+ *
+ * @param status - HTTP status code
+ * @returns The fallback `AuthErrorType`, or `null` for no overlay
+ *
+ * @see PAT-004 Error type mapping
+ */
+export declare function statusFallbackType(status: number | undefined): AuthErrorType | null;
 
 /**
  * Token response from BFF /bff/token endpoint
@@ -704,6 +901,20 @@ export declare interface TwoFactorVerifyResponse {
     backup_codes: string[];
     user_id: string;
 }
+
+/**
+ * Callback fired when the interceptor receives a non-empty error code that is
+ * neither in `ERROR_CODE_TO_TYPE` / `errorCodeOverrides` nor in
+ * `KNOWN_INLINE_CODES`.
+ *
+ * Consumers can wire this to a telemetry sink to surface backend/frontend map
+ * drift. Naked-status errors (no `error_type` on the body) do NOT fire this.
+ *
+ * @param code - The lowercased unmapped error code (always a non-empty string at call site)
+ * @param status - HTTP status code
+ * @param error - The original Axios error (unknown; caller may narrow)
+ */
+export declare type UnmappedErrorHook = (code: string, status: number, error: unknown) => void;
 
 /**
  * Type export for consuming components
@@ -767,7 +978,7 @@ tokenExpiresAt: number | null;
 error: {
 type: AuthErrorType;
 message: string;
-retryAfter?: number | undefined;
+code?: string | undefined;
 } | null;
 } & PiniaCustomStateProperties<AuthState>) => {
 user_id: string;
@@ -796,7 +1007,7 @@ tokenExpiresAt: number | null;
 error: {
 type: AuthErrorType;
 message: string;
-retryAfter?: number | undefined;
+code?: string | undefined;
 } | null;
 } & PiniaCustomStateProperties<AuthState>) => boolean;
 /**
@@ -819,7 +1030,7 @@ tokenExpiresAt: number | null;
 error: {
 type: AuthErrorType;
 message: string;
-retryAfter?: number | undefined;
+code?: string | undefined;
 } | null;
 } & PiniaCustomStateProperties<AuthState>) => DecodedAccessToken | null;
 /**
@@ -904,10 +1115,19 @@ login(returnUrl?: string): void;
 */
 logout(): Promise<void>;
 /**
-* Set auth error state
-* Also sets isAuthenticated to false for session_expired
+* Set auth error state.
+*
+* Clears identity state (`isAuthenticated`, `user`, `accessToken`,
+* `tokenExpiresAt`) when the user's identity is no longer valid on this
+* session — currently `session_expired` and `account_blocked`.
+*
+* Operator-facing categories (`dev_error`, `server_error`) preserve auth
+* state so consumer telemetry keeps user context intact for bug reports.
+* `service_unavailable` is transient and never clears state.
 *
 * @param error - Auth error object
+*
+* @see PAT-004 Error type mapping
 */
 setError(error: AuthError): void;
 /**

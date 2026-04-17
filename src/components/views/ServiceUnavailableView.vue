@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { ServiceUnavailableViewProps } from '../../types/config'
 
 defineOptions({ name: 'ServiceUnavailableView' })
@@ -10,6 +10,8 @@ const DEFAULT_TITLE = 'Service unavailable'
 const DEFAULT_MESSAGE = "We're having trouble connecting to authentication services."
 const DEFAULT_BUTTON = 'Try now'
 const DEFAULT_RETRYING_LABEL = 'Retrying...'
+/** Fixed countdown window (seconds) between auto-retries. */
+const COUNTDOWN_SECONDS = 30
 const defaultCountdownLabel = (seconds: number) => `Retry in ${seconds}s`
 
 const title = computed(() => props.config.text.serviceUnavailable?.title ?? DEFAULT_TITLE)
@@ -29,13 +31,7 @@ const countdownLabelFn = computed(
 const icon = computed(() => props.config.icons.serviceUnavailable)
 const retryIcon = computed(() => props.config.icons.retry)
 
-function sanitizeSeconds(value: number): number {
-  if (!Number.isFinite(value) || value < 0) return 30
-  return Math.floor(value)
-}
-
-const totalTime = ref(sanitizeSeconds(props.retryAfter))
-const countdown = ref(sanitizeSeconds(props.retryAfter))
+const countdown = ref(COUNTDOWN_SECONDS)
 const isRetrying = ref(false)
 const tryNowButton = ref<HTMLButtonElement | null>(null)
 let intervalId: ReturnType<typeof setInterval> | null = null
@@ -43,13 +39,12 @@ let unmounted = false
 
 defineExpose({ primaryAction: tryNowButton })
 
-const progress = computed(() => {
-  if (totalTime.value <= 0) return 0
-  return Math.min(
+const progress = computed(() =>
+  Math.min(
     100,
-    Math.max(0, Math.floor(((totalTime.value - countdown.value) / totalTime.value) * 100))
+    Math.max(0, Math.floor(((COUNTDOWN_SECONDS - countdown.value) / COUNTDOWN_SECONDS) * 100))
   )
-})
+)
 
 const countdownText = computed(() => countdownLabelFn.value(countdown.value))
 
@@ -60,15 +55,9 @@ function stopCountdown() {
   }
 }
 
-function startCountdown(seconds: number) {
+function startCountdown() {
   stopCountdown()
-  const safeSeconds = sanitizeSeconds(seconds)
-  totalTime.value = safeSeconds
-  countdown.value = safeSeconds
-  if (safeSeconds <= 0) {
-    void triggerRetry()
-    return
-  }
+  countdown.value = COUNTDOWN_SECONDS
   intervalId = setInterval(() => {
     if (countdown.value > 0) {
       countdown.value--
@@ -90,12 +79,9 @@ async function triggerRetry() {
     isRetrying.value = false
     // If we're still mounted after the retry resolved, the parent kept the
     // service_unavailable state — restart the countdown so the user sees a
-    // fresh retry window instead of a stuck "Retry in 0s". If the parent
-    // updated `retryAfter` in response to the retry, the immediate-mode
-    // prop watcher has already restarted us with the new value; otherwise
-    // we fall back to the current value here.
+    // fresh retry window instead of a stuck "Retry in 0s".
     if (!unmounted) {
-      startCountdown(props.retryAfter)
+      startCountdown()
     }
   }
 }
@@ -104,13 +90,7 @@ function handleTryNow() {
   void triggerRetry()
 }
 
-watch(
-  () => props.retryAfter,
-  (seconds) => {
-    startCountdown(seconds)
-  },
-  { immediate: true }
-)
+startCountdown()
 
 onBeforeUnmount(() => {
   unmounted = true

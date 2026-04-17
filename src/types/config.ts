@@ -8,7 +8,7 @@
 
 import type { Component } from 'vue'
 import type { Logger } from '@turnkeystaffing/get-native-vue-logger'
-import type { AuthError } from './auth'
+import type { AuthError, AuthErrorType } from './auth'
 
 /**
  * Authentication mode
@@ -32,6 +32,14 @@ export interface AuthIcons {
   serviceUnavailable: Component | false
   /** Icon for retry button (false to disable) */
   retry: Component | false
+  /** Icon for dev-error view title (false to disable) */
+  devError: Component | false
+  /** Icon for account-blocked view title (false to disable) */
+  accountBlocked: Component | false
+  /** Icon for server-error view title (false to disable) */
+  serverError: Component | false
+  /** Icon for "Sign out" CTA on terminal views (false to disable) */
+  signOut: Component | false
 }
 
 /**
@@ -52,6 +60,24 @@ export interface AuthText {
     retryingLabel?: string
     countdownLabel?: (seconds: number) => string
   }
+  devError?: {
+    title?: string
+    message?: string
+    contactLine?: string
+    signOut?: string
+  }
+  accountBlocked?: {
+    title?: string
+    message?: string
+    insufficientPermissionsTitle?: string
+    insufficientPermissionsMessage?: string
+    signOut?: string
+  }
+  serverError?: {
+    title?: string
+    message?: string
+    dismissButton?: string
+  }
 }
 
 /**
@@ -66,13 +92,50 @@ export interface SessionExpiredViewProps {
 
 /**
  * Props passed to a consumer-provided replacement for the default
- * service-unavailable view. Stable public API from v2.0.0.
+ * service-unavailable view.
  */
 export interface ServiceUnavailableViewProps {
   error: AuthError
   onRetry: () => void | Promise<void>
   config: BffAuthConfig
-  retryAfter: number
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * dev-error view. Terminal view — no retry / no re-login path.
+ *
+ * `onSignOut` calls `authStore.logout()` so the user has a non-destructive
+ * escape hatch to switch accounts.
+ */
+export interface DevErrorViewProps {
+  error: AuthError
+  onSignOut: () => void | Promise<void>
+  config: BffAuthConfig
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * account-blocked view. Covers both `account_inactive` and
+ * `insufficient_permissions`; the copy branches on `error.code`.
+ */
+export interface AccountBlockedViewProps {
+  error: AuthError
+  onSignOut: () => void | Promise<void>
+  config: BffAuthConfig
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * server-error view. Renders a Dismiss action that calls
+ * `authStore.clearError()` via the `dismiss` event.
+ *
+ * Events:
+ * - `dismiss` — consumer requests overlay close; `AuthErrorBoundary`
+ *   listens and calls `authStore.clearError()`.
+ */
+export interface ServerErrorViewProps {
+  error: AuthError
+  config: BffAuthConfig
 }
 
 /**
@@ -81,11 +144,31 @@ export interface ServiceUnavailableViewProps {
  * Props contract (stable public API from v2.0.0):
  * - `sessionExpired` receives {@link SessionExpiredViewProps}
  * - `serviceUnavailable` receives {@link ServiceUnavailableViewProps}
+ * - `devError` receives {@link DevErrorViewProps}
+ * - `accountBlocked` receives {@link AccountBlockedViewProps}
+ * - `serverError` receives {@link ServerErrorViewProps}
  */
 export interface AuthErrorViews {
   sessionExpired?: Component
   serviceUnavailable?: Component
+  devError?: Component
+  accountBlocked?: Component
+  serverError?: Component
 }
+
+/**
+ * Callback fired when the interceptor receives a non-empty error code that is
+ * neither in `ERROR_CODE_TO_TYPE` / `errorCodeOverrides` nor in
+ * `KNOWN_INLINE_CODES`.
+ *
+ * Consumers can wire this to a telemetry sink to surface backend/frontend map
+ * drift. Naked-status errors (no `error_type` on the body) do NOT fire this.
+ *
+ * @param code - The lowercased unmapped error code (always a non-empty string at call site)
+ * @param status - HTTP status code
+ * @param error - The original Axios error (unknown; caller may narrow)
+ */
+export type UnmappedErrorHook = (code: string, status: number, error: unknown) => void
 
 /**
  * Plugin options provided during app.use()
@@ -111,6 +194,24 @@ export interface BffAuthPluginOptions {
 
   /** Authentication mode - 'token' (default) or 'cookie' for BFF cookie-only auth */
   mode?: AuthMode
+
+  /**
+   * Callback fired when the interceptor encounters an unmapped error code.
+   *
+   * Use this to surface backend/frontend map drift in production telemetry.
+   * @see UnmappedErrorHook
+   */
+  onUnmappedError?: UnmappedErrorHook
+
+  /**
+   * Per-consumer overrides for the code→category map.
+   *
+   * Keys must be lowercase; values may be any `AuthErrorType` or `null`
+   * (marks the code as inline/silent — treated like `KNOWN_INLINE_CODES`).
+   *
+   * Overrides shallow-merge *over* the canonical `ERROR_CODE_TO_TYPE` map.
+   */
+  errorCodeOverrides?: Record<string, AuthErrorType | null>
 }
 
 /**
@@ -138,4 +239,10 @@ export interface BffAuthConfig {
 
   /** Resolved authentication mode */
   mode: AuthMode
+
+  /** Resolved drift callback (undefined if consumer provided none) */
+  onUnmappedError?: UnmappedErrorHook
+
+  /** Resolved code→category overrides (undefined if consumer provided none) */
+  errorCodeOverrides?: Record<string, AuthErrorType | null>
 }

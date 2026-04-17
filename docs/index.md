@@ -1,55 +1,84 @@
 # Project Documentation Index
 
-**@turnkeystaffing/get-native-vue-auth** v1.3.3
-**Generated:** 2026-02-04 | **Scan Level:** Quick | **Mode:** Initial Scan
+**`@turnkeystaffing/get-native-vue-auth`** — Vue 3 plugin library for BFF authentication.
+
+**Generated:** 2026-04-18 (full rescan, deep)
+
+---
 
 ## Project Overview
 
-- **Type:** Monolith (single cohesive library)
-- **Primary Language:** TypeScript
-- **Architecture:** Plugin/Library (Vue 3 BFF authentication plugin)
-- **Registry:** GitHub Packages (`@turnkeystaffing` scope)
+- **Type:** monolith, single deliverable (library)
+- **Primary language:** TypeScript (strict, ES2020, `moduleResolution: bundler`)
+- **Framework:** Vue 3 + Pinia 3 + Axios + Vue Router 4 + jwt-decode (all peer dependencies)
+- **Architecture:** Layered Vue plugin — config → service → state → interceptors → router → composition → presentation
+- **Version:** 2.0.0 (Vuetify removed; single `AuthErrorBoundary` replaces v1.x overlay trio)
 
 ## Quick Reference
 
-- **Tech Stack:** Vue 3 + Pinia + Axios + Vue Router + jwt-decode (no UI framework dependency as of v2.0.0)
-- **Entry Point:** `src/index.ts`
-- **Architecture Pattern:** Vue Plugin with Composition API, Pinia Store, Service Layer
-- **Build:** Vite 7 library mode → `dist/index.js` (ES module)
-- **Test:** Vitest 4 + @vue/test-utils (jsdom)
-- **Package Manager:** Yarn 4.12.0
+- **Entry point:** `src/index.ts`
+- **Plugin install:** `bffAuthPlugin` from `src/plugin.ts`
+- **State store:** `useAuthStore` from `src/stores/auth.ts`
+- **Overlay component:** `<AuthErrorBoundary/>` (registered globally by the plugin)
+- **Error-code routing:** `src/services/errorCodeMap.ts` — `ERROR_CODE_TO_TYPE`, `mapErrorCodeToType`
+- **Build:** Vite 7 library mode → `dist/index.js` (ESM), `dist/index.d.ts` (rolled up), `dist/get-native-vue-auth.css`
+- **Tests:** Vitest 4 + @vue/test-utils + jsdom
+- **Package manager:** Yarn Berry 4.12.0
 
 ## Generated Documentation
 
-- [Project Overview](./project-overview.md) — Executive summary, purpose, tech stack
-- [Architecture](./architecture.md) — Module architecture, data flows, type system, BFF API contract
-- [Source Tree Analysis](./source-tree-analysis.md) — Annotated directory structure with file descriptions
-- [Component Inventory](./component-inventory.md) — `AuthErrorBoundary` + default views catalog (v2.0.0)
-- [Development Guide](./development-guide.md) — Prerequisites, setup, build, test, publish
+- [Project Overview](./project-overview.md) — purpose, public API summary, recovery categories
+- [Architecture](./architecture.md) — layers, module responsibilities, data flow, auth modes, security notes, stable API surface
+- [Source Tree Analysis](./source-tree-analysis.md) — annotated tree, entry points, module relationships
+- [Component Inventory](./component-inventory.md) — `AuthErrorBoundary`, five recovery views, bundled icons, theming tokens
+- [State Management](./state-management.md) — Pinia `auth` store — state, getters, actions, transitions, setError semantics
+- [API Contracts](./api-contracts.md) — BFF endpoints, request/response schemas, error-code → category routing
+- [Development Guide](./development-guide.md) — prerequisites, yarn scripts, demo app, testing, release workflow
 
-## Existing Documentation
+## Hand-written References
 
-- [README](../README.md) — Usage documentation, API reference, configuration options, exports list
+- [Auth Error Codes](./auth-error-codes.md) — backend-side catalog of every OAuth / auth-API / BFF error code with recoverability classification
+- [Error Handling Analysis](./error-handling-analysis.md) — SPA recovery category reasoning (the rationale behind the five `AuthErrorType` values)
+- [README](../README.md) — consumer-facing quickstart, theming, migration from 1.x, full configuration reference
+
+## Implementation Artifacts
+
+Per-feature specs and planning docs produced via the BMAD workflow:
+
+- `_bmad-output/planning-artifacts/` — tech specs, PRFAQs
+- `_bmad-output/implementation-artifacts/` — per-story implementation specs and deferred-work log
+
+Notable recent specs (not authoritative — treat as historical context):
+- `spec-auth-error-recovery-categories.md`
+- `spec-remove-vuetify-error-overlay.md`
+- `spec-demo-playground.md`
+- `tech-spec-2fa-support.md`
+- `tech-spec-bff-cookie-only-mode.md`
+- `tech-spec-custom-client-login-redirect.md`
 
 ## Getting Started
 
-### For Consumers
+1. **Consuming the library** — see [README](../README.md) (Installation → Quick Start → Theming → Migration from 1.x).
+2. **Modifying the library** — start at [Development Guide](./development-guide.md) then [Architecture](./architecture.md).
+3. **Understanding error handling** — read [Error Handling Analysis](./error-handling-analysis.md) before [API Contracts](./api-contracts.md).
 
-```bash
-# Configure GitHub Packages for @turnkeystaffing scope
-# Then install:
-yarn add @turnkeystaffing/get-native-vue-auth
-```
+## Public API Surface
 
-See [README](../README.md) for full usage instructions.
+Every exported symbol in `src/index.ts`:
 
-### For Contributors
+| Category | Exports |
+|---|---|
+| Plugin | `bffAuthPlugin`, `DEFAULT_ICONS` |
+| Config | `useAuthConfig`, `BFF_AUTH_CONFIG_KEY`, `getGlobalConfig`, `setGlobalConfig` |
+| Store | `useAuthStore`, types `AuthState`, `AuthStore` |
+| Composable | `useAuth`, type `UseAuth` |
+| Auth service | `authService`, `useAuthService`, class `AuthService`, `AuthConfigurationError`, `parseAuthError`, `isAuthConfigured`, types `LoginCredentials`, `LoginOptions`, `LoginWithCustomClientOptions`, `CompleteOAuthFlowOptions` |
+| Error-code map | `ERROR_CODE_TO_TYPE`, `KNOWN_INLINE_CODES`, `mapErrorCodeToType`, `statusFallbackType` |
+| Interceptors | `setupAuthInterceptors`, type `AuthStoreInterface` |
+| Router | `setupAuthGuard`, `createAuthGuard`, type `AuthGuardDependencies` |
+| JWT | `decodeJwt`, `extractEmailFromJwt`, `decodeAccessToken`, type `JwtPayload` |
+| Circuit breaker | `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken` |
+| Component | `AuthErrorBoundary` (default export from `.vue`) |
+| Types barrel | See `src/types/index.ts` — `UserInfo`, `CheckAuthResponse`, `TokenResponse`, `AuthError`, `AuthErrorType`, `BackendAuthError`, `BackendTokenResponse`, `LogoutResponse`, `DecodedAccessToken`, `TwoFactorErrorCode`, `TwoFactor*Response`, `BffAuthPluginOptions`, `BffAuthConfig`, `AuthIcons`, `AuthText`, `AuthErrorViews`, per-view props types, `UnmappedErrorHook`, `AuthMode` |
 
-```bash
-corepack enable
-yarn install
-yarn dev          # Watch mode build
-yarn test:watch   # Test in watch mode
-```
-
-See [Development Guide](./development-guide.md) for full setup instructions.
+Anything NOT in `src/index.ts` is internal and may change without notice.

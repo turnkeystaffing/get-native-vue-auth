@@ -1,0 +1,60 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-04-17T21:00:00Z",
+    "last_updated": "2026-04-17T21:15:00Z",
+    "completed": "2026-04-17T21:15:00Z"
+  },
+  "mode": "full_rescan",
+  "scan_level": "deep",
+  "project_root": "/home/aradesh/get-native-vue-auth",
+  "project_knowledge": "/home/aradesh/get-native-vue-auth/docs",
+  "completed_steps": [
+    { "step": "step_1", "status": "completed", "timestamp": "2026-04-17T21:02:00Z", "summary": "Classified as monolith, single part, project_type_id=library (Vue 3 plugin, v2.0.0)" },
+    { "step": "step_2", "status": "completed", "timestamp": "2026-04-17T21:03:00Z", "summary": "Found 8 existing docs (README + 7 under docs/); no .github/ workflows" },
+    { "step": "step_3", "status": "completed", "timestamp": "2026-04-17T21:04:00Z", "summary": "Tech: Vue 3.4/Pinia 3/Axios 1.6/Vue Router 4/jwt-decode 4 (peer), Vite 7 lib mode, Vitest 4+jsdom, Yarn 4.12.0" },
+    { "step": "step_4", "status": "completed", "timestamp": "2026-04-17T21:06:00Z", "summary": "Deep-read src/ orchestration + services + store + composable + router + utils + types + AuthErrorBoundary + 5 views" },
+    { "step": "step_5", "status": "completed", "timestamp": "2026-04-17T21:07:00Z", "summary": "source-tree-analysis.md written (annotated tree, entry points, critical dirs, relationships)" },
+    { "step": "step_6", "status": "completed", "timestamp": "2026-04-17T21:07:00Z", "summary": "Dev/ops info extracted from package.json scripts + vite configs + Yarn Berry setup; no CI in-repo" },
+    { "step": "step_8", "status": "completed", "timestamp": "2026-04-17T21:10:00Z", "summary": "architecture.md rewritten (tech stack, pattern, module responsibilities, data flows, auth modes, security notes, ADR/PAT refs)" },
+    { "step": "step_9", "status": "completed", "timestamp": "2026-04-17T21:13:00Z", "summary": "project-overview.md, component-inventory.md, state-management.md, api-contracts.md, development-guide.md written/rewritten" },
+    { "step": "step_10", "status": "completed", "timestamp": "2026-04-17T21:14:00Z", "summary": "Master index.md regenerated; links all 7 generated + 2 hand-written + README" },
+    { "step": "step_11", "status": "completed", "timestamp": "2026-04-17T21:15:00Z", "summary": "Validation: no (To be generated)/TBD/TODO/Pending markers; all expected outputs on disk" },
+    { "step": "step_12", "status": "completed", "timestamp": "2026-04-17T21:15:00Z", "summary": "Workflow complete" }
+  ],
+  "current_step": "completed",
+  "findings": {
+    "project_classification": "monolith, 1 part, TypeScript/Vue 3 library (v2.0.0 — Vuetify removed)",
+    "technology_stack": "Vue 3.4 / Pinia 3 / Axios 1.6 / Vue Router 4 / jwt-decode 4 / get-native-vue-logger (peer), Vite 7 lib mode, Vitest 4 + jsdom, Yarn Berry 4.12.0",
+    "outputs_count": 7
+  },
+  "project_types": [
+    { "part_id": "main", "project_type_id": "library", "display_name": "@turnkeystaffing/get-native-vue-auth" }
+  ],
+  "project_parts": [
+    {
+      "part_id": "main",
+      "root_path": "/home/aradesh/get-native-vue-auth",
+      "project_type_id": "library",
+      "repository_type": "monolith",
+      "primary_language": "TypeScript",
+      "framework": "Vue 3 + Pinia 3 + Axios + Vue Router 4 + jwt-decode",
+      "build_tool": "Vite 7 (library mode)",
+      "test_framework": "Vitest 4 + @vue/test-utils + jsdom",
+      "package_manager": "Yarn 4.12.0",
+      "entry_point": "src/index.ts"
+    }
+  ],
+  "outputs_generated": [
+    "project-scan-report.json",
+    "index.md",
+    "project-overview.md",
+    "architecture.md",
+    "source-tree-analysis.md",
+    "component-inventory.md",
+    "state-management.md",
+    "api-contracts.md",
+    "development-guide.md"
+  ],
+  "resume_instructions": "Completed"
+}

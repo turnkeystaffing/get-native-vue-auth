@@ -7,17 +7,11 @@ import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { recordLoginAttempt } from '../utils/loginCircuitBreaker'
 import SessionExpiredView from './views/SessionExpiredView.vue'
 import ServiceUnavailableView from './views/ServiceUnavailableView.vue'
+import DevErrorView from './views/DevErrorView.vue'
+import AccountBlockedView from './views/AccountBlockedView.vue'
+import ServerErrorView from './views/ServerErrorView.vue'
 
 defineOptions({ name: 'AuthErrorBoundary' })
-
-const DEFAULT_RETRY_AFTER = 30
-
-function sanitizeRetryAfter(value: number | undefined): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    return DEFAULT_RETRY_AFTER
-  }
-  return Math.floor(value)
-}
 
 const logger = createLogger('AuthErrorBoundary')
 const { error } = useAuth()
@@ -35,6 +29,15 @@ const activeView = computed<Component | null>(() => {
   }
   if (type === 'service_unavailable') {
     return config.errorViews.serviceUnavailable ?? ServiceUnavailableView
+  }
+  if (type === 'dev_error') {
+    return config.errorViews.devError ?? DevErrorView
+  }
+  if (type === 'account_blocked') {
+    return config.errorViews.accountBlocked ?? AccountBlockedView
+  }
+  if (type === 'server_error') {
+    return config.errorViews.serverError ?? ServerErrorView
   }
   return null
 })
@@ -54,8 +57,27 @@ const viewProps = computed(() => {
     return {
       error: currentError,
       onRetry: handleRetry,
-      config,
-      retryAfter: sanitizeRetryAfter(currentError.retryAfter)
+      config
+    }
+  }
+  if (currentError.type === 'dev_error') {
+    return {
+      error: currentError,
+      onSignOut: handleSignOut,
+      config
+    }
+  }
+  if (currentError.type === 'account_blocked') {
+    return {
+      error: currentError,
+      onSignOut: handleSignOut,
+      config
+    }
+  }
+  if (currentError.type === 'server_error') {
+    return {
+      error: currentError,
+      config
     }
   }
   return null
@@ -79,6 +101,24 @@ function handleSignIn() {
   } catch (err) {
     logger.error('Failed to initiate login redirect', err)
   }
+}
+
+async function handleSignOut() {
+  logger.info('User initiated sign-out from terminal view')
+  try {
+    await authStore.logout()
+  } catch (err) {
+    logger.error('Sign-out failed from terminal view', err)
+  } finally {
+    // Safety net for test environments where logout doesn't redirect; in real
+    // usage authStore.logout() triggers a full page redirect and this is a noop.
+    authStore.clearError()
+  }
+}
+
+function handleDismiss() {
+  logger.info('User dismissed server_error overlay')
+  authStore.clearError()
 }
 
 async function handleRetry() {
@@ -216,6 +256,7 @@ onBeforeUnmount(() => {
         :is="activeView"
         ref="viewRef"
         v-bind="viewProps"
+        @dismiss="handleDismiss"
       />
     </div>
   </Teleport>

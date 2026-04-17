@@ -10,7 +10,6 @@ import type { AxiosError } from 'axios'
 import type { UserInfo, TokenResponse, BackendAuthError } from '@/types/auth'
 import {
   authService,
-  mapErrorType,
   parseAuthError,
   AuthConfigurationError
 } from '@/services/auth'
@@ -413,8 +412,8 @@ describe('AuthService', () => {
 
     it('throws AuthError when backend returns structured error', async () => {
       const backendError: BackendAuthError = {
-        detail: 'Session already expired',
-        error_type: 'authentication_error'
+        error: 'authentication_error',
+        error_description: 'Session already expired'
       }
       const axiosError = {
         isAxiosError: true,
@@ -429,7 +428,8 @@ describe('AuthService', () => {
 
       await expect(authService.logout()).rejects.toEqual({
         type: 'session_expired',
-        message: 'Session already expired'
+        message: 'Session already expired',
+        code: 'authentication_error'
       })
     })
 
@@ -777,88 +777,158 @@ describe('AuthService', () => {
     })
   })
 
-  describe('mapErrorType', () => {
-    it('maps authentication_error to session_expired', () => {
-      expect(mapErrorType('authentication_error')).toBe('session_expired')
-    })
-
-    it('maps authorization_error to permission_denied', () => {
-      expect(mapErrorType('authorization_error')).toBe('permission_denied')
-    })
-
-    it('maps auth_service_unavailable to service_unavailable', () => {
-      expect(mapErrorType('auth_service_unavailable')).toBe('service_unavailable')
-    })
-  })
-
   describe('parseAuthError', () => {
-    it('returns null when error has no response data', () => {
+    it('returns null when error has no response', () => {
       const error = { response: undefined } as AxiosError<BackendAuthError>
       expect(parseAuthError(error)).toBeNull()
     })
 
-    it('returns null when response has no error_type', () => {
+    it('returns null when response body has no error code', () => {
       const error = {
-        response: { data: { detail: 'Some error' } }
-      } as AxiosError<BackendAuthError>
+        response: { status: 404, data: { error_description: 'Some error' }, headers: {} }
+      } as unknown as AxiosError<BackendAuthError>
       expect(parseAuthError(error)).toBeNull()
     })
 
     it('parses authentication_error correctly', () => {
       const error = {
         response: {
+          status: 401,
           data: {
-            detail: 'Session has expired',
-            error_type: 'authentication_error'
-          }
+            error: 'authentication_error',
+            error_description: 'Session has expired'
+          },
+          headers: {}
         }
-      } as AxiosError<BackendAuthError>
+      } as unknown as AxiosError<BackendAuthError>
 
       const result = parseAuthError(error)
 
       expect(result).toEqual({
         type: 'session_expired',
-        message: 'Session has expired'
+        message: 'Session has expired',
+        code: 'authentication_error'
       })
     })
 
-    it('includes retryAfter for service_unavailable errors', () => {
+    it('lowercases upper-case backend codes', () => {
       const error = {
         response: {
+          status: 403,
           data: {
-            detail: 'Auth service is down',
-            error_type: 'auth_service_unavailable',
-            retry_after: 30
-          }
+            error: 'REAUTH_REQUIRED',
+            error_description: 'Reauth required'
+          },
+          headers: {}
         }
-      } as AxiosError<BackendAuthError>
+      } as unknown as AxiosError<BackendAuthError>
 
       const result = parseAuthError(error)
 
       expect(result).toEqual({
-        type: 'service_unavailable',
-        message: 'Auth service is down',
-        retryAfter: 30
+        type: 'session_expired',
+        message: 'Reauth required',
+        code: 'reauth_required'
       })
     })
 
-    it('omits retryAfter when not present', () => {
+    it('routes INSUFFICIENT_PERMISSIONS to account_blocked from code alone', () => {
       const error = {
         response: {
+          status: 403,
           data: {
-            detail: 'Permission denied',
-            error_type: 'authorization_error'
-          }
+            error: 'INSUFFICIENT_PERMISSIONS',
+            error_description: 'Access required'
+          },
+          headers: {}
         }
-      } as AxiosError<BackendAuthError>
+      } as unknown as AxiosError<BackendAuthError>
 
       const result = parseAuthError(error)
 
-      expect(result).not.toHaveProperty('retryAfter')
       expect(result).toEqual({
-        type: 'permission_denied',
-        message: 'Permission denied'
+        type: 'account_blocked',
+        message: 'Access required',
+        code: 'insufficient_permissions'
       })
+    })
+
+    it('falls back to raw code when error_description is absent', () => {
+      const error = {
+        response: {
+          status: 500,
+          data: { error: 'INTERNAL_ERROR' },
+          headers: {}
+        }
+      } as unknown as AxiosError<BackendAuthError>
+
+      const result = parseAuthError(error)
+
+      expect(result).toEqual({
+        type: 'server_error',
+        message: 'INTERNAL_ERROR',
+        code: 'internal_error'
+      })
+    })
+
+    it('returns null for known inline codes', () => {
+      const error = {
+        response: {
+          status: 400,
+          data: {
+            error: 'weak_password',
+            error_description: 'Password too weak'
+          },
+          headers: {}
+        }
+      } as unknown as AxiosError<BackendAuthError>
+
+      expect(parseAuthError(error)).toBeNull()
+    })
+
+    it('returns null for unknown codes without status fallback', () => {
+      const error = {
+        response: {
+          status: 400,
+          data: {
+            error: 'completely_unknown_code',
+            error_description: 'Unknown'
+          },
+          headers: {}
+        }
+      } as unknown as AxiosError<BackendAuthError>
+
+      expect(parseAuthError(error)).toBeNull()
+    })
+
+    it('returns null for 401 without an error code (status fallback is interceptor responsibility)', () => {
+      const error = {
+        response: {
+          status: 401,
+          data: { error_description: 'Unauthorized' },
+          headers: {}
+        }
+      } as unknown as AxiosError<BackendAuthError>
+
+      expect(parseAuthError(error)).toBeNull()
+    })
+
+    it('honors consumer overrides', () => {
+      const error = {
+        response: {
+          status: 418,
+          data: {
+            error: 'i_am_a_teapot',
+            error_description: 'Teapot'
+          },
+          headers: {}
+        }
+      } as unknown as AxiosError<BackendAuthError>
+
+      const result = parseAuthError(error, { i_am_a_teapot: 'server_error' })
+
+      expect(result?.type).toBe('server_error')
+      expect(result?.code).toBe('i_am_a_teapot')
     })
   })
 })

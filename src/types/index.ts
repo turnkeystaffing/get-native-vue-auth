@@ -29,5 +29,9 @@ export type {
   AuthErrorViews,
   SessionExpiredViewProps,
   ServiceUnavailableViewProps,
+  DevErrorViewProps,
+  AccountBlockedViewProps,
+  ServerErrorViewProps,
+  UnmappedErrorHook,
   AuthMode
 } from './config'

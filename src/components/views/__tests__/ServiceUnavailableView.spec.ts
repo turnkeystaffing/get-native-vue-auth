@@ -1,8 +1,8 @@
 /**
  * ServiceUnavailableView Unit Tests
  *
- * Covers countdown, auto-retry, manual retry, retryAfter prop reactivity,
- * and text overrides. Store integration is covered separately in
+ * Covers the fixed 30-second countdown, auto-retry, manual retry, and
+ * text overrides. Store integration is covered separately in
  * AuthErrorBoundary.spec.ts.
  */
 
@@ -27,7 +27,11 @@ function makeConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
       sessionExpired: IconStub,
       login: IconStub,
       serviceUnavailable: IconStub,
-      retry: IconStub
+      retry: IconStub,
+      devError: IconStub,
+      accountBlocked: IconStub,
+      serverError: IconStub,
+      signOut: IconStub
     },
     errorViews: {},
     text: {},
@@ -50,34 +54,32 @@ describe('ServiceUnavailableView', () => {
     vi.useRealTimers()
   })
 
-  it('renders countdown starting at retryAfter', () => {
+  it('starts the countdown at the fixed 30-second default', () => {
     const wrapper = mount(ServiceUnavailableView, {
       props: {
         error: serviceUnavailableError,
         onRetry: vi.fn(),
-        config: makeConfig(),
-        retryAfter: 15
+        config: makeConfig()
       }
     })
 
-    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 15s')
+    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 30s')
   })
 
-  it('decrements countdown each second and fires onRetry at 0', async () => {
+  it('decrements the countdown each second and fires onRetry at 0', async () => {
     const onRetry = vi.fn().mockResolvedValue(undefined)
     const wrapper = mount(ServiceUnavailableView, {
       props: {
         error: serviceUnavailableError,
         onRetry,
-        config: makeConfig(),
-        retryAfter: 2
+        config: makeConfig()
       }
     })
 
     await vi.advanceTimersByTimeAsync(1000)
-    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 1s')
+    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 29s')
 
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(29_000)
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
@@ -87,30 +89,12 @@ describe('ServiceUnavailableView', () => {
       props: {
         error: serviceUnavailableError,
         onRetry,
-        config: makeConfig(),
-        retryAfter: 30
+        config: makeConfig()
       }
     })
 
     await wrapper.get('[data-testid="try-now-button"]').trigger('click')
     expect(onRetry).toHaveBeenCalledTimes(1)
-  })
-
-  it('restarts countdown when retryAfter prop changes', async () => {
-    const wrapper = mount(ServiceUnavailableView, {
-      props: {
-        error: serviceUnavailableError,
-        onRetry: vi.fn(),
-        config: makeConfig(),
-        retryAfter: 10
-      }
-    })
-
-    await vi.advanceTimersByTimeAsync(3000)
-    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 7s')
-
-    await wrapper.setProps({ retryAfter: 20 } as any)
-    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 20s')
   })
 
   it('clears the interval on unmount', async () => {
@@ -119,48 +103,33 @@ describe('ServiceUnavailableView', () => {
       props: {
         error: serviceUnavailableError,
         onRetry,
-        config: makeConfig(),
-        retryAfter: 5
+        config: makeConfig()
       }
     })
 
     wrapper.unmount()
-    await vi.advanceTimersByTimeAsync(6000)
+    await vi.advanceTimersByTimeAsync(40_000)
     expect(onRetry).not.toHaveBeenCalled()
   })
 
-  it('restarts the countdown after a failed retry when retryAfter is unchanged', async () => {
+  it('restarts the countdown after a retry resolves while still mounted', async () => {
     const onRetry = vi.fn().mockResolvedValue(undefined)
     const wrapper = mount(ServiceUnavailableView, {
       props: {
         error: serviceUnavailableError,
         onRetry,
-        config: makeConfig(),
-        retryAfter: 4
+        config: makeConfig()
       }
     })
 
     // Countdown reaches 0 → auto-retry fires. Retry promise resolves without
-    // the parent unmounting us (simulating a persistent service_unavailable
-    // error). The countdown should start over rather than stay at "Retry in 0s".
-    await vi.advanceTimersByTimeAsync(4000)
+    // the parent unmounting us (persistent service_unavailable) — the countdown
+    // should restart at 30s rather than stay at "Retry in 0s".
+    await vi.advanceTimersByTimeAsync(30_000)
     expect(onRetry).toHaveBeenCalledTimes(1)
 
-    // Drain any pending microtasks from the finally-block restart.
+    // Drain pending microtasks from the finally-block restart.
     await vi.advanceTimersByTimeAsync(0)
-    expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 4s')
-  })
-
-  it('falls back to 30s when retryAfter is NaN', () => {
-    const wrapper = mount(ServiceUnavailableView, {
-      props: {
-        error: serviceUnavailableError,
-        onRetry: vi.fn(),
-        config: makeConfig(),
-        retryAfter: Number.NaN
-      }
-    })
-
     expect(wrapper.get('[data-testid="countdown-text"]').text()).toContain('Retry in 30s')
   })
 
@@ -180,8 +149,7 @@ describe('ServiceUnavailableView', () => {
               countdownLabel
             }
           }
-        }),
-        retryAfter: 30
+        })
       }
     })
 
@@ -199,8 +167,7 @@ describe('ServiceUnavailableView', () => {
       props: {
         error: serviceUnavailableError,
         onRetry: vi.fn(),
-        config,
-        retryAfter: 10
+        config
       }
     })
 

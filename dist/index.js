@@ -1,57 +1,142 @@
-import { createLogger as U } from "@turnkeystaffing/get-native-vue-logger";
-import { inject as he, computed as s, defineComponent as F, ref as S, openBlock as d, createElementBlock as m, createElementVNode as c, createBlock as P, resolveDynamicComponent as O, createCommentVNode as G, toDisplayString as I, watch as J, onBeforeUnmount as ie, normalizeStyle as pe, Fragment as Q, createTextVNode as ee, Teleport as ge, mergeProps as ve, nextTick as me } from "vue";
-import { defineStore as ye } from "pinia";
-import A from "axios";
-import { jwtDecode as oe } from "jwt-decode";
-const se = /* @__PURE__ */ Symbol("bff-auth-config");
-let ae = null;
-function _e(e) {
-  ae = e;
+import { createLogger as D } from "@turnkeystaffing/get-native-vue-logger";
+import { inject as me, computed as s, defineComponent as U, ref as A, openBlock as u, createElementBlock as m, createElementVNode as c, createBlock as C, resolveDynamicComponent as I, createCommentVNode as x, toDisplayString as y, onBeforeUnmount as ae, normalizeStyle as ye, Fragment as ee, createTextVNode as te, normalizeClass as re, watch as ne, Teleport as be, mergeProps as we, nextTick as Ee } from "vue";
+import { defineStore as Ae } from "pinia";
+import T from "axios";
+import { jwtDecode as ce } from "jwt-decode";
+const le = /* @__PURE__ */ Symbol("bff-auth-config");
+let ue = null;
+function ke(e) {
+  ue = e;
 }
-function x() {
-  return ae;
+function L() {
+  return ue;
 }
-function kt() {
-  const e = he(se);
+function fr() {
+  const e = me(le);
   if (!e)
     throw new Error(
       "BFF Auth config not found. Did you forget to install the plugin with app.use(bffAuthPlugin, options)?"
     );
   return e;
 }
-const g = U("AuthService");
-class k extends Error {
+const de = Object.freeze({
+  // ── session_expired — re-login fixes it ────────────────────────────────
+  invalid_grant: "session_expired",
+  missing_token: "session_expired",
+  invalid_token: "session_expired",
+  invalid_user_id: "session_expired",
+  user_not_found: "session_expired",
+  missing_refresh_token: "session_expired",
+  invalid_refresh_token: "session_expired",
+  reauth_required: "session_expired",
+  session_compromised: "session_expired",
+  forbidden: "session_expired",
+  invalid_session: "session_expired",
+  authentication_error: "session_expired",
+  // ── service_unavailable — wait and retry ───────────────────────────────
+  temporarily_unavailable: "service_unavailable",
+  service_unavailable: "service_unavailable",
+  auth_service_unavailable: "service_unavailable",
+  logout_failed: "service_unavailable",
+  sessions_fetch_failed: "service_unavailable",
+  revoke_failed: "service_unavailable",
+  password_change_error: "service_unavailable",
+  resend_email_failed: "service_unavailable",
+  resend_email_error: "service_unavailable",
+  "2fa_setup_error": "service_unavailable",
+  "2fa_verify_error": "service_unavailable",
+  rate_limit_exceeded: "service_unavailable",
+  // ── dev_error — OAuth / client misconfiguration ────────────────────────
+  invalid_client: "dev_error",
+  unauthorized_client: "dev_error",
+  unsupported_response_type: "dev_error",
+  unsupported_grant_type: "dev_error",
+  invalid_scope: "dev_error",
+  invalid_redirect_uri: "dev_error",
+  client_inactive: "dev_error",
+  cors_error: "dev_error",
+  // ── account_blocked — user terminal (contact admin / sign out) ────────
+  account_inactive: "account_blocked",
+  insufficient_permissions: "account_blocked",
+  // ── server_error — infra/admin terminal (request_id) ──────────────────
+  server_error: "server_error",
+  internal_error: "server_error",
+  not_implemented: "server_error",
+  unknown_host: "server_error"
+}), fe = /* @__PURE__ */ new Set([
+  // Passwords
+  "missing_current_password",
+  "missing_new_password",
+  "missing_password",
+  "invalid_current_password",
+  "weak_password",
+  "invalid_password",
+  // 2FA / TOTP
+  "missing_totp_code",
+  "invalid_totp_code",
+  "missing_setup_token",
+  "invalid_setup_token",
+  "no_provisional_secret",
+  "2fa_already_enabled",
+  "invalid_totp",
+  // Login-form
+  "invalid_credentials",
+  // Email management
+  "email_not_found",
+  "email_exists",
+  "email_not_verified",
+  "email_already_verified",
+  "cannot_remove_primary",
+  "cannot_remove_last",
+  "cannot_set_primary_unverified",
+  "invalid_email",
+  "validation_failed",
+  "max_emails_exceeded",
+  // Security middleware
+  "payload_too_large",
+  // Session management UI
+  "missing_session_id",
+  "invalid_session_id",
+  "session_not_found",
+  // OAuth user-input / consent
+  "invalid_request",
+  "access_denied"
+]);
+function xe(e, r) {
+  if (!e) return null;
+  const t = e.toLowerCase();
+  return r && Object.prototype.hasOwnProperty.call(r, t) ? r[t] ?? null : fe.has(t) ? null : de[t] ?? null;
+}
+function Ce(e) {
+  return e === 401 ? "session_expired" : e === 429 ? "service_unavailable" : null;
+}
+const w = D("AuthService");
+class $ extends Error {
   constructor(r) {
     super(r), this.name = "AuthConfigurationError";
   }
 }
-function E() {
-  return x()?.bffBaseUrl || "";
+function S() {
+  return L()?.bffBaseUrl || "";
 }
-function te() {
-  return x()?.clientId || "";
+function oe() {
+  return L()?.clientId || "";
 }
-function Y() {
-  const e = x();
+function Z() {
+  const e = L();
   return !!(e?.bffBaseUrl && e?.clientId);
 }
-function we(e) {
-  return {
-    authentication_error: "session_expired",
-    authorization_error: "permission_denied",
-    auth_service_unavailable: "service_unavailable"
-  }[e];
+function _e(e, r) {
+  const t = e.response;
+  if (!t) return null;
+  const n = t.data ?? {}, o = n.error, a = typeof o == "string" && o.length > 0 ? o.toLowerCase() : null;
+  if (!a) return null;
+  const l = xe(a, r);
+  if (l === null) return null;
+  const d = n.error_description || o || "";
+  return { type: l, message: d, code: a };
 }
-function ue(e) {
-  if (!e.response?.data?.error_type)
-    return null;
-  const r = e.response.data, t = {
-    type: we(r.error_type),
-    message: r.detail
-  };
-  return r.retry_after !== void 0 && (t.retryAfter = r.retry_after), t;
-}
-class be {
+class Te {
   /**
    * Submit login credentials to BFF for authentication
    * This POSTs to /api/v1/oauth/login and expects a 200 OK on success.
@@ -66,17 +151,17 @@ class be {
    * @throws AxiosError with status 401 with detail '2fa_code_required' when TOTP code is needed
    * @throws AxiosError with status 503 for service unavailable
    */
-  async submitCredentials(r, t, i) {
+  async submitCredentials(r, t, n) {
     try {
-      const n = { email: r, password: t };
-      i !== void 0 && (n.totp_code = i), await A.post(
-        `${E()}/api/v1/oauth/login`,
-        n,
+      const o = { email: r, password: t };
+      n !== void 0 && (o.totp_code = n), await T.post(
+        `${S()}/api/v1/oauth/login`,
+        o,
         { withCredentials: !0 }
         // Include cookies for session handling
-      ), g.info("Credentials submitted successfully");
-    } catch (n) {
-      throw g.error("Failed to submit credentials", n), n;
+      ), w.info("Credentials submitted successfully");
+    } catch (o) {
+      throw w.error("Failed to submit credentials", o), o;
     }
   }
   /**
@@ -87,20 +172,20 @@ class be {
    * @throws AuthConfigurationError if auth is not configured
    */
   async checkAuth() {
-    if (!Y())
-      throw new k(
+    if (!Z())
+      throw new $(
         "Authentication service is not configured. Please contact your administrator."
       );
     try {
       return {
         isAuthenticated: !0,
-        user: (await A.get(`${E()}/bff/userinfo`, {
+        user: (await T.get(`${S()}/bff/userinfo`, {
           withCredentials: !0
           // Include bff_session cookie
         })).data
       };
     } catch (r) {
-      if (A.isAxiosError(r) && r.response?.status === 401)
+      if (T.isAxiosError(r) && r.response?.status === 401)
         return {
           isAuthenticated: !1,
           user: null
@@ -119,23 +204,23 @@ class be {
    */
   login(r) {
     const t = r || {};
-    if (!Y())
-      throw g.error("Cannot initiate login: Auth configuration is incomplete"), new k(
+    if (!Z())
+      throw w.error("Cannot initiate login: Auth configuration is incomplete"), new $(
         "Authentication service is not configured. Please contact your administrator."
       );
-    const i = t.returnUrl || window.location.href;
-    let n;
+    const n = t.returnUrl || window.location.href;
+    let o;
     try {
-      n = new URL(i, window.location.origin);
+      o = new URL(n, window.location.origin);
     } catch {
-      g.warn("Malformed returnUrl, falling back to current page:", i), n = new URL(window.location.href);
+      w.warn("Malformed returnUrl, falling back to current page:", n), o = new URL(window.location.href);
     }
-    n.origin !== window.location.origin && (g.warn("Blocked external redirect attempt:", i), n = new URL("/", window.location.origin));
-    const a = n.href, u = `${E()}/bff/login`, f = new URLSearchParams({
-      client_id: te(),
+    o.origin !== window.location.origin && (w.warn("Blocked external redirect attempt:", n), o = new URL("/", window.location.origin));
+    const a = o.href, l = `${S()}/bff/login`, d = new URLSearchParams({
+      client_id: oe(),
       redirect_url: a
     });
-    g.debug("Initiating login redirect", { returnUrl: a }), window.location.href = `${u}?${f.toString()}`;
+    w.debug("Initiating login redirect", { returnUrl: a }), window.location.href = `${l}?${d.toString()}`;
   }
   /**
    * Start a cross-origin login redirect using a custom OAuth client ID.
@@ -158,25 +243,25 @@ class be {
    * @see completeOAuthFlow for completing the OAuth flow after credential submission
    */
   loginWithCustomClient(r) {
-    const { clientId: t, returnUrl: i } = r, n = t.trim();
-    if (!n)
+    const { clientId: t, returnUrl: n } = r, o = t.trim();
+    if (!o)
       throw new Error("clientId must not be empty");
     let a;
     try {
-      a = new URL(i);
+      a = new URL(n);
     } catch {
       throw new Error("returnUrl is not a valid URL");
     }
     if (a.protocol !== "http:" && a.protocol !== "https:")
       throw new Error("returnUrl must use http or https scheme");
-    const u = E();
-    if (!u)
-      throw new k("BFF base URL is not configured.");
-    const f = `${u}/bff/login`, p = new URLSearchParams({
-      client_id: n,
-      redirect_url: i
+    const l = S();
+    if (!l)
+      throw new $("BFF base URL is not configured.");
+    const d = `${l}/bff/login`, h = new URLSearchParams({
+      client_id: o,
+      redirect_url: n
     });
-    g.debug("Initiating custom client login redirect", { clientId: n, returnUrl: i }), window.location.href = `${f}?${p.toString()}`;
+    w.debug("Initiating custom client login redirect", { clientId: o, returnUrl: n }), window.location.href = `${d}?${h.toString()}`;
   }
   /**
    * Complete OAuth flow after successful credential submission.
@@ -189,14 +274,14 @@ class be {
    * @param options - Required clientId and returnUrl from the originating SPA
    */
   completeOAuthFlow(r) {
-    const { clientId: t, returnUrl: i } = r;
-    if (!t || !i)
+    const { clientId: t, returnUrl: n } = r;
+    if (!t || !n)
       throw new Error("completeOAuthFlow requires both clientId and returnUrl");
-    const n = `${E()}/bff/login`, a = new URLSearchParams({
+    const o = `${S()}/bff/login`, a = new URLSearchParams({
       client_id: t,
-      redirect_url: i
+      redirect_url: n
     });
-    g.debug("Completing OAuth flow", { clientId: t, returnUrl: i }), window.location.href = `${n}?${a.toString()}`;
+    w.debug("Completing OAuth flow", { clientId: t, returnUrl: n }), window.location.href = `${o}?${a.toString()}`;
   }
   /**
    * Get fresh access token for API calls
@@ -209,18 +294,18 @@ class be {
    * @throws AuthConfigurationError if auth is not configured
    */
   async getAccessToken() {
-    if (x()?.mode === "cookie")
-      throw new k(
+    if (L()?.mode === "cookie")
+      throw new $(
         "getAccessToken() is not available in cookie mode. Token management is handled by the BFF proxy via cookies."
       );
-    if (!Y())
-      throw new k(
+    if (!Z())
+      throw new $(
         "Authentication service is not configured. Please contact your administrator."
       );
     try {
-      const r = await A.post(
-        `${E()}/bff/token`,
-        { client_id: te() },
+      const r = await T.post(
+        `${S()}/bff/token`,
+        { client_id: oe() },
         { withCredentials: !0 }
       );
       return {
@@ -230,7 +315,7 @@ class be {
         scope: r.data.scope
       };
     } catch (r) {
-      if (A.isAxiosError(r) && r.response?.status === 401)
+      if (T.isAxiosError(r) && r.response?.status === 401)
         return null;
       throw r;
     }
@@ -242,16 +327,16 @@ class be {
    */
   async logout() {
     try {
-      return await A.post(
-        `${E()}/bff/logout`,
+      return await T.post(
+        `${S()}/bff/logout`,
         {},
         {
           withCredentials: !0
         }
       ), { success: !0 };
     } catch (r) {
-      if (A.isAxiosError(r)) {
-        const t = ue(r);
+      if (T.isAxiosError(r)) {
+        const t = _e(r);
         if (t)
           throw t;
       }
@@ -271,14 +356,14 @@ class be {
    */
   async setup2FA(r) {
     try {
-      const t = await A.post(
-        `${E()}/api/v1/auth/2fa/setup`,
+      const t = await T.post(
+        `${S()}/api/v1/auth/2fa/setup`,
         { token: r },
         { withCredentials: !0 }
       );
-      return g.info("2FA setup initiated successfully"), t.data;
+      return w.info("2FA setup initiated successfully"), t.data;
     } catch (t) {
-      throw g.error("Failed to initiate 2FA setup", t), t;
+      throw w.error("Failed to initiate 2FA setup", t), t;
     }
   }
   /**
@@ -295,14 +380,14 @@ class be {
    */
   async verify2FASetup(r, t) {
     try {
-      const i = await A.post(
-        `${E()}/api/v1/auth/2fa/verify-setup`,
+      const n = await T.post(
+        `${S()}/api/v1/auth/2fa/verify-setup`,
         { token: r, totp_code: t },
         { withCredentials: !0 }
       );
-      return g.info("2FA setup verified successfully"), i.data;
-    } catch (i) {
-      throw g.error("Failed to verify 2FA setup", i), i;
+      return w.info("2FA setup verified successfully"), n.data;
+    } catch (n) {
+      throw w.error("Failed to verify 2FA setup", n), n;
     }
   }
   /**
@@ -316,49 +401,49 @@ class be {
    */
   async resend2FASetupEmail(r, t) {
     try {
-      const i = await A.post(
-        `${E()}/api/v1/auth/2fa/resend-setup-email`,
+      const n = await T.post(
+        `${S()}/api/v1/auth/2fa/resend-setup-email`,
         { email: r, password: t },
         { withCredentials: !0 }
       );
-      return g.info("2FA setup email resent successfully"), i.data;
-    } catch (i) {
-      throw g.error("Failed to resend 2FA setup email", i), i;
+      return w.info("2FA setup email resent successfully"), n.data;
+    } catch (n) {
+      throw w.error("Failed to resend 2FA setup email", n), n;
     }
   }
 }
-const L = new be();
-function xt() {
-  return L;
+const O = new Te();
+function _r() {
+  return O;
 }
-const V = U("JwtUtils");
-function Ae(e) {
+const G = D("JwtUtils");
+function Se(e) {
   if (!e)
     return null;
   try {
-    return oe(e);
+    return ce(e);
   } catch (r) {
-    return V.warn("Failed to decode JWT token:", r), null;
+    return G.warn("Failed to decode JWT token:", r), null;
   }
 }
-function Tt(e) {
-  const r = Ae(e);
+function hr(e) {
+  const r = Se(e);
   return !r?.email || typeof r.email != "string" ? null : r.email;
 }
-function Ee(e) {
+function Ie(e) {
   if (!e)
     return null;
   try {
-    const r = oe(e);
-    return !r.email || typeof r.email != "string" ? (V.warn("Decoded token missing required email field"), null) : !r.user_id || typeof r.user_id != "string" ? (V.warn("Decoded token missing required user_id field"), null) : Array.isArray(r.roles) ? r : (V.warn("Decoded token missing required roles field"), null);
+    const r = ce(e);
+    return !r.email || typeof r.email != "string" ? (G.warn("Decoded token missing required email field"), null) : !r.user_id || typeof r.user_id != "string" ? (G.warn("Decoded token missing required user_id field"), null) : Array.isArray(r.roles) ? r : (G.warn("Decoded token missing required roles field"), null);
   } catch (r) {
-    return V.warn("Failed to decode access token:", r), null;
+    return G.warn("Failed to decode access token:", r), null;
   }
 }
-const Z = "gn-auth-login-circuit-breaker", le = 3, K = 120 * 1e3;
-function Ce() {
+const W = "gn-auth-login-circuit-breaker", he = 3, K = 120 * 1e3;
+function Le() {
   try {
-    const e = sessionStorage.getItem(Z);
+    const e = sessionStorage.getItem(W);
     if (!e) return null;
     const r = JSON.parse(e);
     return typeof r == "object" && r !== null && typeof r.count == "number" && Number.isFinite(r.count) && typeof r.firstAttemptAt == "number" && Number.isFinite(r.firstAttemptAt) ? r : null;
@@ -366,38 +451,38 @@ function Ce() {
     return null;
   }
 }
-function ke(e) {
-  sessionStorage.setItem(Z, JSON.stringify(e));
+function Ue(e) {
+  sessionStorage.setItem(W, JSON.stringify(e));
 }
-function ce(e = K) {
-  const r = Ce();
-  return r ? Date.now() - r.firstAttemptAt > e ? (sessionStorage.removeItem(Z), null) : r : null;
+function ve(e = K) {
+  const r = Le();
+  return r ? Date.now() - r.firstAttemptAt > e ? (sessionStorage.removeItem(W), null) : r : null;
 }
-function de(e = le, r = K) {
+function pe(e = he, r = K) {
   try {
-    const t = ce(r), i = Date.now(), n = t ? { count: t.count + 1, firstAttemptAt: t.firstAttemptAt } : { count: 1, firstAttemptAt: i };
-    return ke(n), n.count <= e;
+    const t = ve(r), n = Date.now(), o = t ? { count: t.count + 1, firstAttemptAt: t.firstAttemptAt } : { count: 1, firstAttemptAt: n };
+    return Ue(o), o.count <= e;
   } catch {
     return !0;
   }
 }
-function fe() {
+function ge() {
   try {
-    sessionStorage.removeItem(Z);
+    sessionStorage.removeItem(W);
   } catch {
   }
 }
-function It(e = le, r = K) {
+function vr(e = he, r = K) {
   try {
-    const t = ce(r);
+    const t = ve(r);
     return t ? t.count >= e : !1;
   } catch {
     return !1;
   }
 }
-const re = 5, N = U("AuthStore");
+const ie = 5, V = D("AuthStore");
 let M = null;
-const W = ye("auth", {
+const X = Ae("auth", {
   state: () => ({
     isAuthenticated: !1,
     isLoading: !1,
@@ -419,7 +504,7 @@ const W = ye("auth", {
      * Decoded JWT access token with all claims.
      * Returns null if token is not available or invalid.
      */
-    decodedToken: (e) => Ee(e.accessToken),
+    decodedToken: (e) => Ie(e.accessToken),
     /**
      * User email extracted from JWT access token.
      * Returns null if token is not available or email claim is missing.
@@ -501,10 +586,10 @@ const W = ye("auth", {
     async initAuth() {
       this.isLoading = !0, this.error = null;
       try {
-        const e = await L.checkAuth();
-        this.isAuthenticated = e.isAuthenticated, this.user = e.user, e.isAuthenticated && fe(), e.isAuthenticated && x()?.mode !== "cookie" && await this.ensureValidToken();
+        const e = await O.checkAuth();
+        this.isAuthenticated = e.isAuthenticated, this.user = e.user, e.isAuthenticated && ge(), e.isAuthenticated && L()?.mode !== "cookie" && await this.ensureValidToken();
       } catch (e) {
-        N.error("Failed to initialize auth:", e), this.isAuthenticated = !1, this.user = null, e instanceof k && this.setError({
+        V.error("Failed to initialize auth:", e), this.isAuthenticated = !1, this.user = null, e instanceof $ && this.setError({
           type: "service_unavailable",
           message: e.message
         });
@@ -519,7 +604,7 @@ const W = ye("auth", {
      * @returns Access token string or null if session expired
      */
     async ensureValidToken() {
-      if (x()?.mode === "cookie")
+      if (L()?.mode === "cookie")
         return null;
       if (this.accessToken && !this.checkTokenNeedsRefresh())
         return this.accessToken;
@@ -538,16 +623,16 @@ const W = ye("auth", {
      */
     async _refreshToken() {
       try {
-        const e = await L.getAccessToken();
-        return e ? !e.accessToken || e.accessToken.trim() === "" ? (N.error("Invalid token response: empty accessToken"), this.setError({
+        const e = await O.getAccessToken();
+        return e ? !e.accessToken || e.accessToken.trim() === "" ? (V.error("Invalid token response: empty accessToken"), this.setError({
           type: "session_expired",
           message: "Invalid token received. Please sign in again."
-        }), null) : ((typeof e.expiresIn != "number" || !Number.isFinite(e.expiresIn) || e.expiresIn < re) && (N.error(`Invalid expiresIn value: ${e.expiresIn}, using minimum`), e.expiresIn = re), this.accessToken = e.accessToken, this.tokenExpiresAt = Date.now() + e.expiresIn * 1e3, e) : (this.setError({
+        }), null) : ((typeof e.expiresIn != "number" || !Number.isFinite(e.expiresIn) || e.expiresIn < ie) && (V.error(`Invalid expiresIn value: ${e.expiresIn}, using minimum`), e.expiresIn = ie), this.accessToken = e.accessToken, this.tokenExpiresAt = Date.now() + e.expiresIn * 1e3, e) : (this.setError({
           type: "session_expired",
           message: "Your session has expired. Please sign in again."
         }), null);
       } catch (e) {
-        return N.error("Token refresh failed:", e), e instanceof k ? (this.setError({
+        return V.error("Token refresh failed:", e), e instanceof $ ? (this.setError({
           type: "service_unavailable",
           message: e.message
         }), null) : (this.setError({
@@ -562,27 +647,36 @@ const W = ye("auth", {
      * @param returnUrl - URL to return to after authentication
      */
     login(e) {
-      this.isLoading = !0, this.error = null, L.login(e ? { returnUrl: e } : void 0);
+      this.isLoading = !0, this.error = null, O.login(e ? { returnUrl: e } : void 0);
     },
     /**
      * Logout - revoke session and reset state
      */
     async logout() {
       try {
-        await L.logout();
+        await O.logout();
       } catch (e) {
-        N.error("Logout failed:", e);
+        V.error("Logout failed:", e);
       }
-      this.$reset(), L.login();
+      this.$reset(), O.login();
     },
     /**
-     * Set auth error state
-     * Also sets isAuthenticated to false for session_expired
+     * Set auth error state.
+     *
+     * Clears identity state (`isAuthenticated`, `user`, `accessToken`,
+     * `tokenExpiresAt`) when the user's identity is no longer valid on this
+     * session — currently `session_expired` and `account_blocked`.
+     *
+     * Operator-facing categories (`dev_error`, `server_error`) preserve auth
+     * state so consumer telemetry keeps user context intact for bug reports.
+     * `service_unavailable` is transient and never clears state.
      *
      * @param error - Auth error object
+     *
+     * @see PAT-004 Error type mapping
      */
     setError(e) {
-      this.error = e, e.type === "session_expired" && (this.isAuthenticated = !1, this.user = null, this.accessToken = null, this.tokenExpiresAt = null);
+      this.error = e, (e.type === "session_expired" || e.type === "account_blocked") && (this.isAuthenticated = !1, this.user = null, this.accessToken = null, this.tokenExpiresAt = null);
     },
     /**
      * Clear current error
@@ -592,42 +686,42 @@ const W = ye("auth", {
     }
   }
 });
-function xe() {
-  const e = W(), r = s(() => e.isAuthenticated), t = s(() => e.isLoading), i = s(() => e.user), n = s(() => e.error), a = s(() => e.userEmail), u = s(() => e.decodedToken), f = s(() => e.userRoles), p = s(() => e.userId), C = s(() => e.userGuid), T = s(() => e.username), y = s(() => e.sessionId);
-  function v(w) {
-    return e.hasRole(w);
+function $e() {
+  const e = X(), r = s(() => e.isAuthenticated), t = s(() => e.isLoading), n = s(() => e.user), o = s(() => e.error), a = s(() => e.userEmail), l = s(() => e.decodedToken), d = s(() => e.userRoles), h = s(() => e.userId), _ = s(() => e.userGuid), g = s(() => e.username), v = s(() => e.sessionId);
+  function p(F) {
+    return e.hasRole(F);
   }
-  function b(w) {
-    e.login(w);
+  function b(F) {
+    e.login(F);
   }
-  async function _() {
+  async function E() {
     await e.logout();
   }
-  function R() {
+  function k() {
     e.clearError();
   }
   return {
     // Reactive state
     isAuthenticated: r,
     isLoading: t,
-    user: i,
+    user: n,
     userEmail: a,
-    error: n,
+    error: o,
     // Decoded token getters
-    decodedToken: u,
-    userRoles: f,
-    userId: p,
-    userGuid: C,
-    username: T,
-    sessionId: y,
+    decodedToken: l,
+    userRoles: d,
+    userId: h,
+    userGuid: _,
+    username: g,
+    sessionId: v,
     // Actions
     login: b,
-    logout: _,
-    clearError: R,
-    hasRole: v
+    logout: E,
+    clearError: k,
+    hasRole: p
   };
 }
-const Te = {
+const Fe = {
   class: "bff-auth-overlay",
   role: "alertdialog",
   "aria-modal": "true",
@@ -635,21 +729,21 @@ const Te = {
   "aria-describedby": "bff-auth-session-expired-message",
   "aria-live": "assertive",
   "data-testid": "session-expired-view"
-}, Ie = { class: "bff-auth-overlay__content" }, Se = {
+}, Be = { class: "bff-auth-overlay__content" }, Oe = {
   key: 0,
   class: "bff-auth-overlay__icon",
   "aria-hidden": "true"
-}, Le = {
+}, De = {
   id: "bff-auth-session-expired-title",
   class: "bff-auth-overlay__title"
-}, Ue = {
+}, Pe = {
   id: "bff-auth-session-expired-message",
   class: "bff-auth-overlay__message"
-}, Fe = { class: "bff-auth-overlay__actions" }, Re = ["disabled", "aria-busy"], $e = {
+}, Re = { class: "bff-auth-overlay__actions" }, Ne = ["disabled", "aria-busy"], Ve = {
   key: 0,
   class: "bff-auth-overlay__button-icon",
   "aria-hidden": "true"
-}, Be = "Session expired", Pe = "Your session has ended. Sign in again to continue.", De = "Sign in", Ne = /* @__PURE__ */ F({
+}, Me = "Session expired", Ge = "Your session has ended. Sign in again to continue.", je = "Sign in", qe = /* @__PURE__ */ U({
   name: "SessionExpiredView",
   __name: "SessionExpiredView",
   props: {
@@ -658,53 +752,48 @@ const Te = {
     config: {}
   },
   setup(e, { expose: r }) {
-    const t = e, i = s(() => t.config.text.sessionExpired?.title ?? Be), n = s(
-      () => t.config.text.sessionExpired?.message ?? t.error.message ?? Pe
-    ), a = s(() => t.config.text.sessionExpired?.button ?? De), u = s(() => t.config.icons.sessionExpired), f = s(() => t.config.icons.login), p = S(!1), C = S(null);
-    r({ primaryAction: C });
-    async function T() {
-      if (!p.value) {
-        p.value = !0;
+    const t = e, n = s(() => t.config.text.sessionExpired?.title ?? Me), o = s(
+      () => t.config.text.sessionExpired?.message ?? t.error.message ?? Ge
+    ), a = s(() => t.config.text.sessionExpired?.button ?? je), l = s(() => t.config.icons.sessionExpired), d = s(() => t.config.icons.login), h = A(!1), _ = A(null);
+    r({ primaryAction: _ });
+    async function g() {
+      if (!h.value) {
+        h.value = !0;
         try {
           await t.onSignIn();
         } finally {
-          p.value = !1;
+          h.value = !1;
         }
       }
     }
-    return (y, v) => (d(), m("div", Te, [
-      c("div", Ie, [
-        u.value ? (d(), m("div", Se, [
-          (d(), P(O(u.value)))
-        ])) : G("", !0),
-        c("h1", Le, I(i.value), 1),
-        c("p", Ue, I(n.value), 1),
-        c("div", Fe, [
+    return (v, p) => (u(), m("div", Fe, [
+      c("div", Be, [
+        l.value ? (u(), m("div", Oe, [
+          (u(), C(I(l.value)))
+        ])) : x("", !0),
+        c("h1", De, y(n.value), 1),
+        c("p", Pe, y(o.value), 1),
+        c("div", Re, [
           c("button", {
             ref_key: "signInButton",
-            ref: C,
+            ref: _,
             type: "button",
             class: "bff-auth-overlay__button bff-auth-overlay__button--primary",
-            disabled: p.value,
-            "aria-busy": p.value,
+            disabled: h.value,
+            "aria-busy": h.value,
             "data-testid": "session-expired-sign-in-button",
-            onClick: T
+            onClick: g
           }, [
-            f.value ? (d(), m("span", $e, [
-              (d(), P(O(f.value)))
-            ])) : G("", !0),
-            c("span", null, I(a.value), 1)
-          ], 8, Re)
+            d.value ? (u(), m("span", Ve, [
+              (u(), C(I(d.value)))
+            ])) : x("", !0),
+            c("span", null, y(a.value), 1)
+          ], 8, Ne)
         ])
       ])
     ]));
   }
-}), X = (e, r) => {
-  const t = e.__vccOpts || e;
-  for (const [i, n] of r)
-    t[i] = n;
-  return t;
-}, Me = /* @__PURE__ */ X(Ne, [["__scopeId", "data-v-ee55e1a2"]]), Ve = {
+}), He = {
   class: "bff-auth-overlay",
   role: "alertdialog",
   "aria-modal": "true",
@@ -712,333 +801,569 @@ const Te = {
   "aria-describedby": "bff-auth-service-unavailable-message",
   "aria-live": "assertive",
   "data-testid": "service-unavailable-view"
-}, Oe = { class: "bff-auth-overlay__content" }, Ge = {
+}, Ye = { class: "bff-auth-overlay__content" }, ze = {
   key: 0,
   class: "bff-auth-overlay__icon bff-auth-overlay__icon--danger",
   "aria-hidden": "true"
-}, He = {
+}, Ze = {
   id: "bff-auth-service-unavailable-title",
   class: "bff-auth-overlay__title"
-}, ze = {
+}, We = {
   id: "bff-auth-service-unavailable-message",
   class: "bff-auth-overlay__message"
-}, je = ["aria-valuenow"], qe = {
+}, Je = { class: "bff-auth-overlay__progress-wrapper" }, Ke = ["aria-valuenow"], Xe = {
   class: "bff-auth-overlay__countdown",
   "data-testid": "countdown-text"
-}, Ye = { class: "bff-auth-overlay__actions" }, Ze = ["disabled", "aria-busy"], Je = {
-  key: 0,
-  class: "bff-auth-overlay__button-icon",
-  "aria-hidden": "true"
-}, Ke = "Service unavailable", We = "We're having trouble connecting to authentication services.", Xe = "Try now", Qe = "Retrying...", et = /* @__PURE__ */ F({
+}, Qe = { class: "bff-auth-overlay__actions" }, et = ["disabled", "aria-busy"], tt = "Service unavailable", rt = "We're having trouble connecting to authentication services.", nt = "Try now", ot = "Retrying...", H = 30, it = /* @__PURE__ */ U({
   name: "ServiceUnavailableView",
   __name: "ServiceUnavailableView",
   props: {
     error: {},
     onRetry: { type: Function },
-    config: {},
-    retryAfter: {}
+    config: {}
   },
   setup(e, { expose: r }) {
-    const t = e, i = (h) => `Retry in ${h}s`, n = s(() => t.config.text.serviceUnavailable?.title ?? Ke), a = s(
-      () => t.config.text.serviceUnavailable?.message ?? t.error.message ?? We
-    ), u = s(
-      () => t.config.text.serviceUnavailable?.button ?? Xe
-    ), f = s(
-      () => t.config.text.serviceUnavailable?.retryingLabel ?? Qe
-    ), p = s(
-      () => t.config.text.serviceUnavailable?.countdownLabel ?? i
-    ), C = s(() => t.config.icons.serviceUnavailable), T = s(() => t.config.icons.retry);
-    function y(h) {
-      return !Number.isFinite(h) || h < 0 ? 30 : Math.floor(h);
+    const t = e, n = (f) => `Retry in ${f}s`, o = s(() => t.config.text.serviceUnavailable?.title ?? tt), a = s(
+      () => t.config.text.serviceUnavailable?.message ?? t.error.message ?? rt
+    ), l = s(
+      () => t.config.text.serviceUnavailable?.button ?? nt
+    ), d = s(
+      () => t.config.text.serviceUnavailable?.retryingLabel ?? ot
+    ), h = s(
+      () => t.config.text.serviceUnavailable?.countdownLabel ?? n
+    ), _ = s(() => t.config.icons.serviceUnavailable), g = s(() => t.config.icons.retry), v = A(H), p = A(!1), b = A(null);
+    let E = null, k = !1;
+    r({ primaryAction: b });
+    const F = s(
+      () => Math.min(
+        100,
+        Math.max(0, Math.floor((H - v.value) / H * 100))
+      )
+    ), j = s(() => h.value(v.value));
+    function B() {
+      E && (clearInterval(E), E = null);
     }
-    const v = S(y(t.retryAfter)), b = S(y(t.retryAfter)), _ = S(!1), R = S(null);
-    let w = null, D = !1;
-    r({ primaryAction: R });
-    const H = s(() => v.value <= 0 ? 0 : Math.min(
-      100,
-      Math.max(0, Math.floor((v.value - b.value) / v.value * 100))
-    )), z = s(() => p.value(b.value));
-    function o() {
-      w && (clearInterval(w), w = null);
-    }
-    function l(h) {
-      o();
-      const q = y(h);
-      if (v.value = q, b.value = q, q <= 0) {
-        $();
-        return;
-      }
-      w = setInterval(() => {
-        b.value > 0 && (b.value--, b.value === 0 && (o(), $()));
+    function q() {
+      B(), v.value = H, E = setInterval(() => {
+        v.value > 0 && (v.value--, v.value === 0 && (B(), N()));
       }, 1e3);
     }
-    async function $() {
-      if (!_.value) {
-        _.value = !0, o();
+    async function N() {
+      if (!p.value) {
+        p.value = !0, B();
         try {
           await t.onRetry();
         } finally {
-          _.value = !1, D || l(t.retryAfter);
+          p.value = !1, k || q();
         }
       }
     }
-    function j() {
-      $();
+    function i() {
+      N();
     }
-    return J(
-      () => t.retryAfter,
-      (h) => {
-        l(h);
-      },
-      { immediate: !0 }
-    ), ie(() => {
-      D = !0, o();
-    }), (h, q) => (d(), m("div", Ve, [
-      c("div", Oe, [
-        C.value ? (d(), m("div", Ge, [
-          (d(), P(O(C.value)))
-        ])) : G("", !0),
-        c("h1", He, I(n.value), 1),
-        c("p", ze, I(a.value), 1),
-        c("div", {
-          class: "bff-auth-overlay__progress",
-          role: "progressbar",
-          "aria-valuenow": H.value,
-          "aria-valuemin": "0",
-          "aria-valuemax": "100",
-          "data-testid": "countdown-progress-bar"
-        }, [
+    return q(), ae(() => {
+      k = !0, B();
+    }), (f, J) => (u(), m("div", He, [
+      c("div", Ye, [
+        _.value ? (u(), m("div", ze, [
+          (u(), C(I(_.value)))
+        ])) : x("", !0),
+        c("h1", Ze, y(o.value), 1),
+        c("p", We, y(a.value), 1),
+        c("div", Je, [
           c("div", {
-            class: "bff-auth-overlay__progress-bar",
-            style: pe({ width: H.value + "%" })
-          }, null, 4)
-        ], 8, je),
-        c("p", qe, [
-          _.value ? (d(), m(Q, { key: 0 }, [
-            ee(I(f.value), 1)
-          ], 64)) : (d(), m(Q, { key: 1 }, [
-            ee(I(z.value), 1)
-          ], 64))
+            class: "bff-auth-overlay__progress",
+            role: "progressbar",
+            "aria-valuenow": F.value,
+            "aria-valuemin": "0",
+            "aria-valuemax": "100",
+            "data-testid": "countdown-progress-bar"
+          }, [
+            c("div", {
+              class: "bff-auth-overlay__progress-bar",
+              style: ye({ width: F.value + "%" })
+            }, null, 4)
+          ], 8, Ke),
+          c("p", Xe, [
+            p.value ? (u(), m(ee, { key: 0 }, [
+              te(y(d.value), 1)
+            ], 64)) : (u(), m(ee, { key: 1 }, [
+              te(y(j.value), 1)
+            ], 64))
+          ])
         ]),
-        c("div", Ye, [
+        c("div", Qe, [
           c("button", {
             ref_key: "tryNowButton",
-            ref: R,
+            ref: b,
             type: "button",
-            class: "bff-auth-overlay__button bff-auth-overlay__button--primary",
-            disabled: _.value,
-            "aria-busy": _.value,
+            class: re(["bff-auth-overlay__button bff-auth-overlay__button--primary", { "bff-auth-overlay__button--loading": p.value }]),
+            disabled: p.value,
+            "aria-busy": p.value,
             "data-testid": "try-now-button",
-            onClick: j
+            onClick: i
           }, [
-            T.value ? (d(), m("span", Je, [
-              (d(), P(O(T.value)))
-            ])) : G("", !0),
-            c("span", null, I(u.value), 1)
-          ], 8, Ze)
+            g.value ? (u(), m("span", {
+              key: 0,
+              class: re(["bff-auth-overlay__button-icon", { "bff-auth-overlay__button-icon--spin": p.value }]),
+              "aria-hidden": "true"
+            }, [
+              (u(), C(I(g.value)))
+            ], 2)) : x("", !0),
+            c("span", null, y(l.value), 1)
+          ], 10, et)
         ])
       ])
     ]));
   }
-}), tt = /* @__PURE__ */ X(et, [["__scopeId", "data-v-1ee962d8"]]), rt = 30, nt = /* @__PURE__ */ F({
+}), st = {
+  class: "bff-auth-overlay",
+  role: "alertdialog",
+  "aria-modal": "true",
+  "aria-labelledby": "bff-auth-dev-error-title",
+  "aria-describedby": "bff-auth-dev-error-message",
+  "aria-live": "assertive",
+  "data-testid": "dev-error-view"
+}, at = { class: "bff-auth-overlay__content" }, ct = {
+  key: 0,
+  class: "bff-auth-overlay__icon bff-auth-overlay__icon--danger",
+  "aria-hidden": "true"
+}, lt = {
+  id: "bff-auth-dev-error-title",
+  class: "bff-auth-overlay__title"
+}, ut = {
+  id: "bff-auth-dev-error-message",
+  class: "bff-auth-overlay__message"
+}, dt = {
+  class: "bff-auth-overlay__message",
+  "data-testid": "dev-error-contact-line"
+}, ft = {
+  key: 1,
+  class: "bff-auth-overlay__code",
+  "data-testid": "dev-error-code"
+}, _t = { class: "bff-auth-overlay__actions" }, ht = ["disabled", "aria-busy"], vt = {
+  key: 0,
+  class: "bff-auth-overlay__button-icon",
+  "aria-hidden": "true"
+}, pt = "Configuration error", gt = "The application is not correctly configured to connect to authentication services.", mt = "Contact the application developer.", yt = "Sign out", bt = /* @__PURE__ */ U({
+  name: "DevErrorView",
+  __name: "DevErrorView",
+  props: {
+    error: {},
+    onSignOut: { type: Function },
+    config: {}
+  },
+  setup(e, { expose: r }) {
+    const t = e, n = s(() => t.config.text.devError?.title ?? pt), o = s(
+      () => t.config.text.devError?.message ?? t.error.message ?? gt
+    ), a = s(
+      () => t.config.text.devError?.contactLine ?? mt
+    ), l = s(
+      () => t.config.text.devError?.signOut ?? yt
+    ), d = s(() => t.config.icons.devError), h = s(() => t.config.icons.signOut), _ = s(() => t.error.code ?? null), g = A(!1), v = A(null);
+    r({ primaryAction: v });
+    async function p() {
+      if (!g.value) {
+        g.value = !0;
+        try {
+          await t.onSignOut();
+        } finally {
+          g.value = !1;
+        }
+      }
+    }
+    return (b, E) => (u(), m("div", st, [
+      c("div", at, [
+        d.value ? (u(), m("div", ct, [
+          (u(), C(I(d.value)))
+        ])) : x("", !0),
+        c("h1", lt, y(n.value), 1),
+        c("p", ut, y(o.value), 1),
+        c("p", dt, y(a.value), 1),
+        _.value ? (u(), m("p", ft, [
+          E[0] || (E[0] = c("span", { class: "bff-auth-overlay__code-label" }, "Error code:", -1)),
+          c("code", null, y(_.value), 1)
+        ])) : x("", !0),
+        c("div", _t, [
+          c("button", {
+            ref_key: "signOutButton",
+            ref: v,
+            type: "button",
+            class: "bff-auth-overlay__button bff-auth-overlay__button--primary",
+            disabled: g.value,
+            "aria-busy": g.value,
+            "data-testid": "dev-error-sign-out-button",
+            onClick: p
+          }, [
+            h.value ? (u(), m("span", vt, [
+              (u(), C(I(h.value)))
+            ])) : x("", !0),
+            c("span", null, y(l.value), 1)
+          ], 8, ht)
+        ])
+      ])
+    ]));
+  }
+}), wt = {
+  class: "bff-auth-overlay",
+  role: "alertdialog",
+  "aria-modal": "true",
+  "aria-labelledby": "bff-auth-account-blocked-title",
+  "aria-describedby": "bff-auth-account-blocked-message",
+  "aria-live": "assertive",
+  "data-testid": "account-blocked-view"
+}, Et = { class: "bff-auth-overlay__content" }, At = {
+  key: 0,
+  class: "bff-auth-overlay__icon bff-auth-overlay__icon--danger",
+  "aria-hidden": "true"
+}, kt = {
+  id: "bff-auth-account-blocked-title",
+  class: "bff-auth-overlay__title"
+}, xt = {
+  id: "bff-auth-account-blocked-message",
+  class: "bff-auth-overlay__message"
+}, Ct = { class: "bff-auth-overlay__actions" }, Tt = ["disabled", "aria-busy"], St = {
+  key: 0,
+  class: "bff-auth-overlay__button-icon",
+  "aria-hidden": "true"
+}, It = "Account unavailable", Lt = "Your account has been disabled. Please contact your administrator for assistance.", Ut = "Access required", $t = "You don't have access to this feature. Please request access from your administrator.", Ft = "Sign out", Bt = /* @__PURE__ */ U({
+  name: "AccountBlockedView",
+  __name: "AccountBlockedView",
+  props: {
+    error: {},
+    onSignOut: { type: Function },
+    config: {}
+  },
+  setup(e, { expose: r }) {
+    const t = e, n = s(
+      () => t.error.code === "insufficient_permissions"
+    ), o = s(() => n.value ? t.config.text.accountBlocked?.insufficientPermissionsTitle ?? Ut : t.config.text.accountBlocked?.title ?? It), a = s(() => n.value ? t.config.text.accountBlocked?.insufficientPermissionsMessage ?? t.error.message ?? $t : t.config.text.accountBlocked?.message ?? t.error.message ?? Lt), l = s(
+      () => t.config.text.accountBlocked?.signOut ?? Ft
+    ), d = s(() => t.config.icons.accountBlocked), h = s(() => t.config.icons.signOut), _ = A(!1), g = A(null);
+    r({ primaryAction: g });
+    async function v() {
+      if (!_.value) {
+        _.value = !0;
+        try {
+          await t.onSignOut();
+        } finally {
+          _.value = !1;
+        }
+      }
+    }
+    return (p, b) => (u(), m("div", wt, [
+      c("div", Et, [
+        d.value ? (u(), m("div", At, [
+          (u(), C(I(d.value)))
+        ])) : x("", !0),
+        c("h1", kt, y(o.value), 1),
+        c("p", xt, y(a.value), 1),
+        c("div", Ct, [
+          c("button", {
+            ref_key: "signOutButton",
+            ref: g,
+            type: "button",
+            class: "bff-auth-overlay__button bff-auth-overlay__button--primary",
+            disabled: _.value,
+            "aria-busy": _.value,
+            "data-testid": "account-blocked-sign-out-button",
+            onClick: v
+          }, [
+            h.value ? (u(), m("span", St, [
+              (u(), C(I(h.value)))
+            ])) : x("", !0),
+            c("span", null, y(l.value), 1)
+          ], 8, Tt)
+        ])
+      ])
+    ]));
+  }
+}), Ot = {
+  class: "bff-auth-overlay",
+  role: "alertdialog",
+  "aria-modal": "true",
+  "aria-labelledby": "bff-auth-server-error-title",
+  "aria-describedby": "bff-auth-server-error-message",
+  "aria-live": "assertive",
+  "data-testid": "server-error-view"
+}, Dt = { class: "bff-auth-overlay__content" }, Pt = {
+  key: 0,
+  class: "bff-auth-overlay__icon bff-auth-overlay__icon--danger",
+  "aria-hidden": "true"
+}, Rt = {
+  id: "bff-auth-server-error-title",
+  class: "bff-auth-overlay__title"
+}, Nt = {
+  id: "bff-auth-server-error-message",
+  class: "bff-auth-overlay__message"
+}, Vt = { class: "bff-auth-overlay__actions" }, Mt = "Something went wrong", Gt = "An unexpected error occurred. Please contact your administrator for assistance.", jt = "Dismiss", qt = /* @__PURE__ */ U({
+  name: "ServerErrorView",
+  __name: "ServerErrorView",
+  props: {
+    error: {},
+    config: {}
+  },
+  emits: ["dismiss"],
+  setup(e, { expose: r, emit: t }) {
+    const n = e, o = t, a = s(() => n.config.text.serverError?.title ?? Mt), l = s(
+      () => n.config.text.serverError?.message ?? n.error.message ?? Gt
+    ), d = s(
+      () => n.config.text.serverError?.dismissButton ?? jt
+    ), h = s(() => n.config.icons.serverError), _ = A(null);
+    r({ primaryAction: _ });
+    function g() {
+      o("dismiss");
+    }
+    return (v, p) => (u(), m("div", Ot, [
+      c("div", Dt, [
+        h.value ? (u(), m("div", Pt, [
+          (u(), C(I(h.value)))
+        ])) : x("", !0),
+        c("h1", Rt, y(a.value), 1),
+        c("p", Nt, y(l.value), 1),
+        c("div", Vt, [
+          c("button", {
+            ref_key: "dismissButton",
+            ref: _,
+            type: "button",
+            class: "bff-auth-overlay__button bff-auth-overlay__button--primary",
+            "data-testid": "server-error-dismiss-button",
+            onClick: g
+          }, [
+            c("span", null, y(d.value), 1)
+          ], 512)
+        ])
+      ])
+    ]));
+  }
+}), Ht = /* @__PURE__ */ U({
   name: "AuthErrorBoundary",
   __name: "AuthErrorBoundary",
   setup(e) {
-    function r(o) {
-      return typeof o != "number" || !Number.isFinite(o) || o < 0 ? rt : Math.floor(o);
-    }
-    const t = U("AuthErrorBoundary"), { error: i } = xe(), n = W(), a = S(null), u = S(null), f = s(() => {
-      const o = i.value?.type, l = x();
-      return l ? o === "session_expired" ? l.errorViews.sessionExpired ?? Me : o === "service_unavailable" ? l.errorViews.serviceUnavailable ?? tt : null : null;
-    }), p = s(() => {
-      const o = i.value, l = x();
-      return !o || !l ? null : o.type === "session_expired" ? {
-        error: o,
-        onSignIn: C,
-        config: l
-      } : o.type === "service_unavailable" ? {
-        error: o,
-        onRetry: T,
-        config: l,
-        retryAfter: r(o.retryAfter)
+    const r = D("AuthErrorBoundary"), { error: t } = $e(), n = X(), o = A(null), a = A(null), l = s(() => {
+      const i = t.value?.type, f = L();
+      return f ? i === "session_expired" ? f.errorViews.sessionExpired ?? qe : i === "service_unavailable" ? f.errorViews.serviceUnavailable ?? it : i === "dev_error" ? f.errorViews.devError ?? bt : i === "account_blocked" ? f.errorViews.accountBlocked ?? Bt : i === "server_error" ? f.errorViews.serverError ?? qt : null : null;
+    }), d = s(() => {
+      const i = t.value, f = L();
+      return !i || !f ? null : i.type === "session_expired" ? {
+        error: i,
+        onSignIn: h,
+        config: f
+      } : i.type === "service_unavailable" ? {
+        error: i,
+        onRetry: v,
+        config: f
+      } : i.type === "dev_error" ? {
+        error: i,
+        onSignOut: _,
+        config: f
+      } : i.type === "account_blocked" ? {
+        error: i,
+        onSignOut: _,
+        config: f
+      } : i.type === "server_error" ? {
+        error: i,
+        config: f
       } : null;
     });
-    function C() {
-      if (!de()) {
-        t.warn("Login redirect circuit breaker tripped from session expired view"), n.setError({
+    function h() {
+      if (!pe()) {
+        r.warn("Login redirect circuit breaker tripped from session expired view"), n.setError({
           type: "service_unavailable",
           message: "Too many login attempts. Authentication service may be unavailable."
         });
         return;
       }
-      t.info("User initiated re-authentication from session expired view");
+      r.info("User initiated re-authentication from session expired view");
       try {
-        const o = window.location.href;
-        n.login(o);
-      } catch (o) {
-        t.error("Failed to initiate login redirect", o);
+        const i = window.location.href;
+        n.login(i);
+      } catch (i) {
+        r.error("Failed to initiate login redirect", i);
       }
     }
-    async function T() {
-      t.info("Attempting auth service retry");
+    async function _() {
+      r.info("User initiated sign-out from terminal view");
       try {
-        await n.initAuth(), n.isAuthenticated ? (n.clearError(), t.info("Auth retry successful, user authenticated")) : n.hasError || (n.setError({
+        await n.logout();
+      } catch (i) {
+        r.error("Sign-out failed from terminal view", i);
+      } finally {
+        n.clearError();
+      }
+    }
+    function g() {
+      r.info("User dismissed server_error overlay"), n.clearError();
+    }
+    async function v() {
+      r.info("Attempting auth service retry");
+      try {
+        await n.initAuth(), n.isAuthenticated ? (n.clearError(), r.info("Auth retry successful, user authenticated")) : n.hasError || (n.setError({
           type: "session_expired",
           message: "Your session has ended. Sign in again to continue."
-        }), t.info("Auth service reachable but session invalid"));
-      } catch (o) {
-        t.warn("Auth service retry failed", o);
+        }), r.info("Auth service reachable but session invalid"));
+      } catch (i) {
+        r.warn("Auth service retry failed", i);
       }
     }
-    let y = null, v = null;
-    function b() {
-      y === null && (y = document.body.style.overflow, document.body.style.overflow = "hidden");
+    let p = null, b = null;
+    function E() {
+      p === null && (p = document.body.style.overflow, document.body.style.overflow = "hidden");
     }
-    function _() {
-      y !== null && (document.body.style.overflow = y, y = null);
+    function k() {
+      p !== null && (document.body.style.overflow = p, p = null);
     }
-    function R() {
-      v = document.activeElement ?? null;
+    function F() {
+      b = document.activeElement ?? null;
     }
-    function w() {
-      if (v && typeof v.focus == "function")
+    function j() {
+      if (b && typeof b.focus == "function")
         try {
-          v.focus();
+          b.focus();
         } catch {
         }
-      v = null;
+      b = null;
     }
-    function D() {
-      const o = u.value;
-      return o ? Array.from(o.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')) : [];
+    function B() {
+      const i = a.value;
+      return i ? Array.from(i.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')) : [];
     }
-    function H(o) {
-      if (o.key !== "Tab") return;
-      const l = D();
-      if (l.length === 0) {
-        o.preventDefault();
+    function q(i) {
+      if (i.key !== "Tab") return;
+      const f = B();
+      if (f.length === 0) {
+        i.preventDefault();
         return;
       }
-      const $ = l[0], j = l[l.length - 1], h = document.activeElement;
-      o.shiftKey ? (h === $ || h === null || !u.value?.contains(h)) && (o.preventDefault(), j.focus()) : (h === j || h === null || !u.value?.contains(h)) && (o.preventDefault(), $.focus());
+      const J = f[0], Q = f[f.length - 1], P = document.activeElement;
+      i.shiftKey ? (P === J || P === null || !a.value?.contains(P)) && (i.preventDefault(), Q.focus()) : (P === Q || P === null || !a.value?.contains(P)) && (i.preventDefault(), J.focus());
     }
-    async function z() {
-      await me();
-      const o = a.value?.primaryAction;
-      if (o && typeof o.focus == "function") {
-        o.focus();
+    async function N() {
+      await Ee();
+      const i = o.value?.primaryAction;
+      if (i && typeof i.focus == "function") {
+        i.focus();
         return;
       }
-      const l = D()[0];
-      l && l.focus();
+      const f = B()[0];
+      f && f.focus();
     }
-    return J(
-      () => f.value !== null,
-      (o, l) => {
-        o && !l ? (R(), b(), z()) : !o && l && (_(), w());
+    return ne(
+      () => l.value !== null,
+      (i, f) => {
+        i && !f ? (F(), E(), N()) : !i && f && (k(), j());
       },
       { immediate: !0 }
-    ), J(
-      () => i.value?.type,
+    ), ne(
+      () => t.value?.type,
       () => {
-        f.value && z();
+        l.value && N();
       }
-    ), ie(() => {
-      _(), w();
-    }), (o, l) => (d(), P(ge, { to: "body" }, [
-      f.value && p.value ? (d(), m("div", {
+    ), ae(() => {
+      k(), j();
+    }), (i, f) => (u(), C(be, { to: "body" }, [
+      l.value && d.value ? (u(), m("div", {
         key: 0,
         ref_key: "overlayRoot",
-        ref: u,
+        ref: a,
         class: "bff-auth-overlay-root",
-        onKeydown: H
+        onKeydown: q
       }, [
-        (d(), P(O(f.value), ve({
+        (u(), C(I(l.value), we({
           ref_key: "viewRef",
-          ref: a
-        }, p.value), null, 16))
-      ], 544)) : G("", !0)
+          ref: o
+        }, d.value, { onDismiss: g }), null, 16))
+      ], 544)) : x("", !0)
     ]));
   }
-}), it = /* @__PURE__ */ X(nt, [["__scopeId", "data-v-7748e4b4"]]), ot = {
+}), Yt = (e, r) => {
+  const t = e.__vccOpts || e;
+  for (const [n, o] of r)
+    t[n] = o;
+  return t;
+}, zt = /* @__PURE__ */ Yt(Ht, [["__scopeId", "data-v-e9144b06"]]), Zt = {
   width: "24",
   height: "24",
   viewBox: "0 0 24 24",
   fill: "none",
   xmlns: "http://www.w3.org/2000/svg",
   "aria-hidden": "true"
-}, st = /* @__PURE__ */ F({
+}, Wt = /* @__PURE__ */ U({
   name: "IconSessionExpired",
   __name: "IconSessionExpired",
   setup(e) {
-    return (r, t) => (d(), m("svg", ot, [...t[0] || (t[0] = [
+    return (r, t) => (u(), m("svg", Zt, [...t[0] || (t[0] = [
       c("path", {
         d: "M3.5 12C3.5 7.30558 7.30558 3.5 12 3.5C16.6944 3.5 20.5 7.30558 20.5 12C20.5 16.6944 16.6944 20.5 12 20.5C7.30558 20.5 3.5 16.6944 3.5 12ZM12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM11.9931 6.64827C11.9435 6.28233 11.6295 6 11.25 6C10.836 6 10.5 6.336 10.5 6.75V12.75L10.5069 12.8517C10.5565 13.2177 10.8705 13.5 11.25 13.5H15.25L15.3517 13.4931C15.7177 13.4435 16 13.1295 16 12.75C16 12.336 15.664 12 15.25 12H12V6.75L11.9931 6.64827Z",
         fill: "currentColor"
       }, null, -1)
     ])]));
   }
-}), at = {
+}), Jt = {
   width: "24",
   height: "24",
   viewBox: "0 0 24 24",
   fill: "none",
   xmlns: "http://www.w3.org/2000/svg",
   "aria-hidden": "true"
-}, ut = /* @__PURE__ */ F({
+}, se = /* @__PURE__ */ U({
   name: "IconLogin",
   __name: "IconLogin",
   setup(e) {
-    return (r, t) => (d(), m("svg", at, [...t[0] || (t[0] = [
+    return (r, t) => (u(), m("svg", Jt, [...t[0] || (t[0] = [
       c("path", {
         d: "M13.2673 4.20889C12.9674 3.9232 12.4926 3.93475 12.2069 4.23467C11.9212 4.5346 11.9328 5.00933 12.2327 5.29502L18.4841 11.2496H3.75C3.33579 11.2496 3 11.5854 3 11.9996C3 12.4138 3.33579 12.7496 3.75 12.7496H18.4842L12.2327 18.7043C11.9328 18.99 11.9212 19.4648 12.2069 19.7647C12.4926 20.0646 12.9674 20.0762 13.2673 19.7905L20.6862 12.7238C20.8551 12.5629 20.9551 12.3576 20.9861 12.1443C20.9952 12.0975 21 12.0491 21 11.9996C21 11.9501 20.9952 11.9016 20.986 11.8547C20.955 11.6415 20.855 11.4364 20.6862 11.2756L13.2673 4.20889Z",
         fill: "currentColor"
       }, null, -1)
     ])]));
   }
-}), lt = {
+}), Kt = {
   width: "24",
   height: "24",
   viewBox: "0 0 24 24",
   fill: "none",
   xmlns: "http://www.w3.org/2000/svg",
   "aria-hidden": "true"
-}, ct = /* @__PURE__ */ F({
+}, Y = /* @__PURE__ */ U({
   name: "IconServiceUnavailable",
   __name: "IconServiceUnavailable",
   setup(e) {
-    return (r, t) => (d(), m("svg", lt, [...t[0] || (t[0] = [
+    return (r, t) => (u(), m("svg", Kt, [...t[0] || (t[0] = [
       c("path", {
         d: "M3.28034 2.21968C2.98745 1.92678 2.51257 1.92677 2.21968 2.21966C1.92678 2.51255 1.92677 2.98743 2.21966 3.28032L6.85339 7.91414C6.47198 8.54894 6.20466 9.26014 6.07981 10.0194C3.79155 10.2313 2 12.1564 2 14.5C2 16.9853 4.01472 19 6.5 19H17.5C17.6415 19 17.7815 18.9935 17.9197 18.9807L20.7194 21.7805C21.0123 22.0734 21.4872 22.0734 21.7801 21.7805C22.073 21.4876 22.073 21.0127 21.7801 20.7198L3.28034 2.21968ZM16.4391 17.5H6.5C4.84315 17.5 3.5 16.1569 3.5 14.5C3.5 12.8431 4.84315 11.5 6.5 11.5H6.75585C7.15641 11.5 7.48627 11.1852 7.50502 10.7851C7.53463 10.1537 7.69446 9.55623 7.95827 9.01904L16.4391 17.5ZM20.5 14.5C20.5 15.2822 20.2007 15.9944 19.7103 16.5285L20.7716 17.5898C21.5331 16.7838 22 15.6964 22 14.5C22 12.1564 20.2085 10.2313 17.9202 10.0194C17.4519 7.17189 14.9798 5 12 5C10.9031 5 9.875 5.29431 8.99031 5.80828L10.1011 6.91911C10.6781 6.65018 11.3215 6.5 12 6.5C14.4132 6.5 16.3832 8.39994 16.495 10.7851C16.5137 11.1852 16.8436 11.5 17.2442 11.5H17.5C19.1569 11.5 20.5 12.8431 20.5 14.5Z",
         fill: "currentColor"
       }, null, -1)
     ])]));
   }
-}), dt = {
+}), Xt = {
   width: "24",
   height: "24",
   viewBox: "0 0 24 24",
   fill: "none",
   xmlns: "http://www.w3.org/2000/svg",
   "aria-hidden": "true"
-}, ft = /* @__PURE__ */ F({
+}, Qt = /* @__PURE__ */ U({
   name: "IconRetry",
   __name: "IconRetry",
   setup(e) {
-    return (r, t) => (d(), m("svg", dt, [...t[0] || (t[0] = [
+    return (r, t) => (u(), m("svg", Xt, [...t[0] || (t[0] = [
       c("path", {
         d: "M12 4.5C7.85786 4.5 4.5 7.85786 4.5 12C4.5 16.1421 7.85786 19.5 12 19.5C16.1421 19.5 19.5 16.1421 19.5 12C19.5 11.6236 19.4723 11.2538 19.4188 10.8923C19.3515 10.4382 19.6839 10 20.1429 10C20.5138 10 20.839 10.2562 20.8953 10.6228C20.9642 11.0718 21 11.5317 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.3051 3 16.4077 3.86656 18 5.29168V4.25C18 3.83579 18.3358 3.5 18.75 3.5C19.1642 3.5 19.5 3.83579 19.5 4.25V7.25C19.5 7.66421 19.1642 8 18.75 8H15.75C15.3358 8 15 7.66421 15 7.25C15 6.83579 15.3358 6.5 15.75 6.5H17.0991C15.7609 5.25883 13.9691 4.5 12 4.5Z",
         fill: "currentColor"
       }, null, -1)
     ])]));
   }
-}), ht = {
-  sessionExpired: st,
-  login: ut,
-  serviceUnavailable: ct,
-  retry: ft
+}), er = {
+  sessionExpired: Wt,
+  login: se,
+  serviceUnavailable: Y,
+  retry: Qt,
+  devError: Y,
+  accountBlocked: Y,
+  serverError: Y,
+  signOut: se
 };
-function pt(e) {
+function tr(e) {
   if (!e.bffBaseUrl)
     throw new Error("bffAuthPlugin: bffBaseUrl is required");
   if (!e.clientId)
@@ -1046,47 +1371,49 @@ function pt(e) {
   if (e.mode !== void 0 && e.mode !== "token" && e.mode !== "cookie")
     throw new Error("bffAuthPlugin: mode must be 'token' or 'cookie'");
 }
-function gt(e) {
-  const r = e.logger ?? U("BffAuth");
+function rr(e) {
+  const r = e.logger ?? D("BffAuth");
   return {
     bffBaseUrl: e.bffBaseUrl,
     clientId: e.clientId,
     logger: r,
-    icons: { ...ht, ...e.icons },
+    icons: { ...er, ...e.icons },
     errorViews: e.errorViews ?? {},
     text: e.text ?? {},
-    mode: e.mode ?? "token"
+    mode: e.mode ?? "token",
+    onUnmappedError: e.onUnmappedError,
+    errorCodeOverrides: e.errorCodeOverrides
   };
 }
-const St = {
+const pr = {
   install(e, r) {
-    pt(r);
-    const t = gt(r);
-    e.provide(se, t), _e(t), e.component("AuthErrorBoundary", it), t.logger.debug("BFF Auth plugin installed", {
+    tr(r);
+    const t = rr(r);
+    e.provide(le, t), ke(t), e.component("AuthErrorBoundary", zt), t.logger.debug("BFF Auth plugin installed", {
       bffBaseUrl: t.bffBaseUrl,
       clientId: t.clientId,
       mode: t.mode
     });
   }
-}, ne = U("AuthInterceptors");
-function Lt(e, r) {
+}, z = D("AuthInterceptors");
+function gr(e, r) {
   e.interceptors.request.use(
     async (t) => {
-      if (x()?.mode === "cookie")
+      if (L()?.mode === "cookie")
         return t;
-      const i = r();
-      if (!i.isAuthenticated)
+      const n = r();
+      if (!n.isAuthenticated)
         return t;
       try {
-        const n = await i.ensureValidToken();
-        n && (t.headers.Authorization = `Bearer ${n}`);
-      } catch (n) {
-        if (n instanceof k)
-          return i.setError({
+        const o = await n.ensureValidToken();
+        o && (t.headers.Authorization = `Bearer ${o}`);
+      } catch (o) {
+        if (o instanceof $)
+          return n.setError({
             type: "service_unavailable",
-            message: n.message
-          }), Promise.reject(n);
-        ne.error("Failed to get auth token:", n instanceof Error ? n.message : "Unknown error");
+            message: o.message
+          }), Promise.reject(o);
+        z.error("Failed to get auth token:", o instanceof Error ? o.message : "Unknown error");
       }
       return t;
     },
@@ -1094,101 +1421,119 @@ function Lt(e, r) {
   ), e.interceptors.response.use(
     (t) => t,
     async (t) => {
-      const i = r(), n = t.response?.status, a = ue(t);
-      if (n === 401 && !Y())
-        ne.warn("401 received but auth is not configured, ignoring");
-      else if (a)
-        i.setError(a);
-      else if (n === 401)
-        i.setError({
-          type: "session_expired",
-          message: "Your session has expired. Please sign in again."
-        });
-      else if (n === 403) {
-        const u = t.response?.data?.detail;
-        i.setError({
-          type: "permission_denied",
-          message: typeof u == "string" ? u : "Permission denied"
-        });
+      const n = r(), o = t.response, a = o?.status ?? 0, l = L(), d = l?.errorCodeOverrides, h = l?.onUnmappedError, _ = o?.data ?? {}, g = _.error, v = typeof g == "string" && g.length > 0 ? g.toLowerCase() : null;
+      if (a === 401 && !Z())
+        return z.warn("401 received but auth is not configured, ignoring"), Promise.reject(t);
+      const p = _e(t, d);
+      if (p)
+        return n.setError(p), Promise.reject(t);
+      if (v) {
+        if (fe.has(v) || d && Object.prototype.hasOwnProperty.call(d, v))
+          return Promise.reject(t);
+        if (!Object.prototype.hasOwnProperty.call(de, v) && h)
+          try {
+            Promise.resolve(h(v, a, t)).catch((k) => {
+              z.warn("onUnmappedError hook rejected", k);
+            });
+          } catch (k) {
+            z.warn("onUnmappedError hook threw", k);
+          }
       }
-      return Promise.reject(t);
+      if (a === 429 && !v)
+        return n.setError({
+          type: "service_unavailable",
+          code: "rate_limit_exceeded",
+          message: _.error_description || "Too many requests. Please try again shortly."
+        }), Promise.reject(t);
+      const b = Ce(a);
+      return b === "session_expired" ? n.setError({
+        type: "session_expired",
+        message: "Your session has expired. Please sign in again."
+      }) : b === "service_unavailable" && a === 429 && n.setError({
+        type: "service_unavailable",
+        code: "rate_limit_exceeded",
+        message: _.error_description || "Too many requests. Please try again shortly."
+      }), Promise.reject(t);
     }
   );
 }
-const B = U("AuthGuard");
-function vt(e) {
+const R = D("AuthGuard");
+function nr(e) {
   return e.meta.public === !0;
 }
-async function mt(e) {
+async function or(e) {
   if (!e.isLoading)
     return !0;
   let r = 0;
   const t = 200;
   for (; e.isLoading && r < t; )
-    await new Promise((i) => setTimeout(i, 50)), r++;
-  return e.isLoading ? (B.warn("Auth initialization timed out after 10 seconds"), !1) : !0;
+    await new Promise((n) => setTimeout(n, 50)), r++;
+  return e.isLoading ? (R.warn("Auth initialization timed out after 10 seconds"), !1) : !0;
 }
-const yt = {
-  getAuthStore: () => W(),
-  getAuthService: () => L
+const ir = {
+  getAuthStore: () => X(),
+  getAuthService: () => O
 };
-function _t(e = yt) {
+function sr(e = ir) {
   let r = !1;
-  function t(i, n, a) {
-    return de() ? (i.login({ returnUrl: a }), !1) : (B.error("Login redirect circuit breaker tripped"), n.setError({
+  function t(n, o, a) {
+    return pe() ? (n.login({ returnUrl: a }), !1) : (R.error("Login redirect circuit breaker tripped"), o.setError({
       type: "service_unavailable",
       message: "Too many login attempts. Authentication service may be unavailable."
     }), !0);
   }
-  return async (i) => {
-    const n = e.getAuthStore(), a = e.getAuthService();
+  return async (n) => {
+    const o = e.getAuthStore(), a = e.getAuthService();
     try {
-      if (vt(i))
+      if (nr(n))
         return !0;
       if (!r) {
         r = !0;
         try {
-          await n.initAuth();
-        } catch (f) {
-          B.error("Failed to initialize auth:", f);
+          await o.initAuth();
+        } catch (d) {
+          R.error("Failed to initialize auth:", d);
         }
       }
-      return await mt(n) ? n.isAuthenticated ? (fe(), !0) : t(a, n, i.fullPath) : (B.warn("Auth not ready, redirecting to login"), t(a, n, i.fullPath));
-    } catch (u) {
-      return u instanceof k ? (B.error("Auth configuration error:", u.message), n.setError({
+      return await or(o) ? o.isAuthenticated ? (ge(), !0) : t(a, o, n.fullPath) : (R.warn("Auth not ready, redirecting to login"), t(a, o, n.fullPath));
+    } catch (l) {
+      return l instanceof $ ? (R.error("Auth configuration error:", l.message), o.setError({
         type: "service_unavailable",
-        message: u.message
-      }), !0) : (B.error("Unexpected error in auth guard:", u), t(a, n, i.fullPath));
+        message: l.message
+      }), !0) : (R.error("Unexpected error in auth guard:", l), t(a, o, n.fullPath));
     }
   };
 }
-function Ut(e) {
-  e.beforeEach(_t());
+function mr(e) {
+  e.beforeEach(sr());
 }
 export {
-  k as AuthConfigurationError,
-  it as AuthErrorBoundary,
-  be as AuthService,
-  se as BFF_AUTH_CONFIG_KEY,
-  ht as DEFAULT_ICONS,
-  L as authService,
-  St as bffAuthPlugin,
-  _t as createAuthGuard,
-  Ee as decodeAccessToken,
-  Ae as decodeJwt,
-  Tt as extractEmailFromJwt,
-  x as getGlobalConfig,
-  Y as isAuthConfigured,
-  It as isCircuitBroken,
-  we as mapErrorType,
-  ue as parseAuthError,
-  de as recordLoginAttempt,
-  fe as resetLoginAttempts,
-  _e as setGlobalConfig,
-  Ut as setupAuthGuard,
-  Lt as setupAuthInterceptors,
-  xe as useAuth,
-  kt as useAuthConfig,
-  xt as useAuthService,
-  W as useAuthStore
+  $ as AuthConfigurationError,
+  zt as AuthErrorBoundary,
+  Te as AuthService,
+  le as BFF_AUTH_CONFIG_KEY,
+  er as DEFAULT_ICONS,
+  de as ERROR_CODE_TO_TYPE,
+  fe as KNOWN_INLINE_CODES,
+  O as authService,
+  pr as bffAuthPlugin,
+  sr as createAuthGuard,
+  Ie as decodeAccessToken,
+  Se as decodeJwt,
+  hr as extractEmailFromJwt,
+  L as getGlobalConfig,
+  Z as isAuthConfigured,
+  vr as isCircuitBroken,
+  xe as mapErrorCodeToType,
+  _e as parseAuthError,
+  pe as recordLoginAttempt,
+  ge as resetLoginAttempts,
+  ke as setGlobalConfig,
+  mr as setupAuthGuard,
+  gr as setupAuthInterceptors,
+  Ce as statusFallbackType,
+  $e as useAuth,
+  fr as useAuthConfig,
+  _r as useAuthService,
+  X as useAuthStore
 };

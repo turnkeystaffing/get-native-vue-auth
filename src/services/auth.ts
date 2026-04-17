@@ -30,6 +30,7 @@ import type {
 } from '../types/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { getGlobalConfig } from '../config'
+import { mapErrorCodeToType } from './errorCodeMap'
 
 /**
  * Logger for auth service operations
@@ -71,38 +72,49 @@ export function isAuthConfigured(): boolean {
 }
 
 /**
- * Map backend error_type to frontend AuthErrorType
- * PAT-004: Error type mapping
+ * Parse auth error from an Axios error response.
+ *
+ * Reads only `error` (code) and `error_description` (message) from the body.
+ * Lowercases the code and routes through the canonical code→category table
+ * with optional consumer overrides. Views render based on `AuthError.code` —
+ * no auxiliary data is carried through.
+ *
+ * Returns `null` when:
+ * - the response carries no code (caller applies HTTP-status fallback)
+ * - the code is a `KNOWN_INLINE_CODES` member (caller handles inline)
+ * - the code is unknown (caller reports drift)
+ * - an `overrides` entry explicitly maps the code to `null`
+ *
+ * This function does NOT apply `statusFallbackType` — the interceptor owns
+ * status-based fallbacks because only it has enough context
+ * (`onUnmappedError`, etc.) to distinguish a naked-status error from drift.
+ *
+ * @param error - The Axios error
+ * @param overrides - Optional per-call code→category overrides
+ *
+ * @see PAT-004 Error type mapping
  */
-export function mapErrorType(backendType: BackendAuthError['error_type']): AuthErrorType {
-  const mapping: Record<BackendAuthError['error_type'], AuthErrorType> = {
-    authentication_error: 'session_expired',
-    authorization_error: 'permission_denied',
-    auth_service_unavailable: 'service_unavailable'
-  }
-  return mapping[backendType]
-}
+export function parseAuthError(
+  error: AxiosError<BackendAuthError>,
+  overrides?: Record<string, AuthErrorType | null>
+): AuthError | null {
+  const response = error.response
+  if (!response) return null
 
-/**
- * Parse auth error from Axios error response
- */
-export function parseAuthError(error: AxiosError<BackendAuthError>): AuthError | null {
-  if (!error.response?.data?.error_type) {
-    return null
-  }
+  const body = response.data ?? ({} as BackendAuthError)
+  const rawCode = body.error
+  const code = typeof rawCode === 'string' && rawCode.length > 0 ? rawCode.toLowerCase() : null
 
-  const backendError = error.response.data
-  const authError: AuthError = {
-    type: mapErrorType(backendError.error_type),
-    message: backendError.detail
-  }
+  // Only resolve when a code is present. Status-level fallbacks are the
+  // interceptor's responsibility.
+  if (!code) return null
 
-  // Only include retryAfter if it has a value
-  if (backendError.retry_after !== undefined) {
-    authError.retryAfter = backendError.retry_after
-  }
+  const type: AuthErrorType | null = mapErrorCodeToType(code, overrides)
+  if (type === null) return null
 
-  return authError
+  const message = body.error_description || rawCode || ''
+
+  return { type, message, code }
 }
 
 /**

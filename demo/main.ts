@@ -10,7 +10,15 @@ app.use(createPinia())
 app.use(router)
 app.use(bffAuthPlugin, {
   bffBaseUrl: 'https://demo.example.com',
-  clientId: 'demo-app'
+  clientId: 'demo-app',
+  // Demonstrates consumer overrides — a made-up code routed to server_error.
+  errorCodeOverrides: {
+    my_custom_code: 'server_error'
+  },
+  // Demonstrates drift observability — fires for any unmapped error code.
+  onUnmappedError: (code, status, error) => {
+    console.warn('[demo] onUnmappedError hook fired', { code, status, error })
+  }
 })
 
 app.mount('#app')

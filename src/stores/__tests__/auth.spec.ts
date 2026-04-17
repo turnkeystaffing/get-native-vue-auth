@@ -433,12 +433,13 @@ describe('AuthStore', () => {
       const store = useAuthStore()
 
       store.setError({
-        type: 'permission_denied',
-        message: 'Access denied'
+        type: 'server_error',
+        message: 'Internal server error',
+        code: 'internal_error'
       })
 
-      expect(store.error?.type).toBe('permission_denied')
-      expect(store.error?.message).toBe('Access denied')
+      expect(store.error?.type).toBe('server_error')
+      expect(store.error?.message).toBe('Internal server error')
       expect(store.hasError).toBe(true)
     })
 
@@ -469,7 +470,35 @@ describe('AuthStore', () => {
       expect(store.tokenExpiresAt).toBeNull()
     })
 
-    it('setError with permission_denied does not clear auth state', () => {
+    it('setError with account_blocked clears auth state', () => {
+      const store = useAuthStore()
+      store.$patch({
+        isAuthenticated: true,
+        user: {
+          user_id: 'test',
+          email: 'test@example.com',
+          session_id: 'session',
+          created_at: '2025-12-05T00:00:00Z',
+          last_activity: '2025-12-05T01:00:00Z',
+          expires_at: '2025-12-06T00:00:00Z'
+        },
+        accessToken: 'token',
+        tokenExpiresAt: Date.now() + 60000
+      })
+
+      store.setError({
+        type: 'account_blocked',
+        message: 'Account disabled',
+        code: 'account_inactive'
+      })
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(store.user).toBeNull()
+      expect(store.accessToken).toBeNull()
+      expect(store.tokenExpiresAt).toBeNull()
+    })
+
+    it('setError with dev_error does NOT clear auth state', () => {
       const store = useAuthStore()
       store.$patch({
         isAuthenticated: true,
@@ -485,8 +514,60 @@ describe('AuthStore', () => {
       })
 
       store.setError({
-        type: 'permission_denied',
-        message: 'No permission'
+        type: 'dev_error',
+        message: 'Misconfigured',
+        code: 'invalid_client'
+      })
+
+      expect(store.isAuthenticated).toBe(true)
+      expect(store.user).not.toBeNull()
+      expect(store.accessToken).toBe('token')
+    })
+
+    it('setError with server_error does NOT clear auth state', () => {
+      const store = useAuthStore()
+      store.$patch({
+        isAuthenticated: true,
+        user: {
+          user_id: 'test',
+          email: 'test@example.com',
+          session_id: 'session',
+          created_at: '2025-12-05T00:00:00Z',
+          last_activity: '2025-12-05T01:00:00Z',
+          expires_at: '2025-12-06T00:00:00Z'
+        },
+        accessToken: 'token'
+      })
+
+      store.setError({
+        type: 'server_error',
+        message: 'Boom',
+        code: 'internal_error'
+      })
+
+      expect(store.isAuthenticated).toBe(true)
+      expect(store.user).not.toBeNull()
+      expect(store.accessToken).toBe('token')
+    })
+
+    it('setError with service_unavailable does NOT clear auth state', () => {
+      const store = useAuthStore()
+      store.$patch({
+        isAuthenticated: true,
+        user: {
+          user_id: 'test',
+          email: 'test@example.com',
+          session_id: 'session',
+          created_at: '2025-12-05T00:00:00Z',
+          last_activity: '2025-12-05T01:00:00Z',
+          expires_at: '2025-12-06T00:00:00Z'
+        },
+        accessToken: 'token'
+      })
+
+      store.setError({
+        type: 'service_unavailable',
+        message: '503'
       })
 
       expect(store.isAuthenticated).toBe(true)
@@ -497,8 +578,8 @@ describe('AuthStore', () => {
     it('clearError clears error state', () => {
       const store = useAuthStore()
       store.setError({
-        type: 'permission_denied',
-        message: 'Access denied'
+        type: 'server_error',
+        message: 'Something'
       })
 
       store.clearError()

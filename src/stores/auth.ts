@@ -328,16 +328,25 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Set auth error state
-     * Also sets isAuthenticated to false for session_expired
+     * Set auth error state.
+     *
+     * Clears identity state (`isAuthenticated`, `user`, `accessToken`,
+     * `tokenExpiresAt`) when the user's identity is no longer valid on this
+     * session — currently `session_expired` and `account_blocked`.
+     *
+     * Operator-facing categories (`dev_error`, `server_error`) preserve auth
+     * state so consumer telemetry keeps user context intact for bug reports.
+     * `service_unavailable` is transient and never clears state.
      *
      * @param error - Auth error object
+     *
+     * @see PAT-004 Error type mapping
      */
     setError(error: AuthError) {
       this.error = error
 
-      // Session expired means user is no longer authenticated
-      if (error.type === 'session_expired') {
+      // Clear auth state when the user's identity is no longer valid.
+      if (error.type === 'session_expired' || error.type === 'account_blocked') {
         this.isAuthenticated = false
         this.user = null
         this.accessToken = null
