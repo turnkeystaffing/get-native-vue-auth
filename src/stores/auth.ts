@@ -8,8 +8,9 @@
  * @see ADR-006 Token refresh strategy (60s buffer)
  */
 
+import axios from 'axios'
 import { defineStore } from 'pinia'
-import { authService, AuthConfigurationError } from '../services/auth'
+import { authService, AuthConfigurationError, parseAuthError } from '../services/auth'
 import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { decodeAccessToken } from '../utils/jwt'
@@ -189,12 +190,23 @@ export const useAuthStore = defineStore('auth', {
         this.isAuthenticated = false
         this.user = null
 
-        // Handle configuration errors - set appropriate error state
+        // Route known errors into the recovery-category model:
+        // 1. AuthConfigurationError → service_unavailable (misconfig shouldn't
+        //    look like a transient outage, but we surface it via the same
+        //    overlay to avoid a blank screen).
+        // 2. Axios errors carrying a mapped backend code (e.g. account_inactive
+        //    → account_blocked) flow through parseAuthError so consumers see
+        //    the correct terminal view instead of a redirect-loop fallback.
         if (error instanceof AuthConfigurationError) {
           this.setError({
             type: 'service_unavailable',
             message: error.message
           })
+        } else if (axios.isAxiosError(error)) {
+          const authError = parseAuthError(error, getGlobalConfig()?.errorCodeOverrides)
+          if (authError) {
+            this.setError(authError)
+          }
         }
       } finally {
         this.isLoading = false
@@ -328,16 +340,25 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Set auth error state
-     * Also sets isAuthenticated to false for session_expired
+     * Set auth error state.
+     *
+     * Clears identity state (`isAuthenticated`, `user`, `accessToken`,
+     * `tokenExpiresAt`) when the user's identity is no longer valid on this
+     * session — currently `session_expired` and `account_blocked`.
+     *
+     * Operator-facing categories (`dev_error`, `server_error`) preserve auth
+     * state so consumer telemetry keeps user context intact for bug reports.
+     * `service_unavailable` is transient and never clears state.
      *
      * @param error - Auth error object
+     *
+     * @see PAT-004 Error type mapping
      */
     setError(error: AuthError) {
       this.error = error
 
-      // Session expired means user is no longer authenticated
-      if (error.type === 'session_expired') {
+      // Clear auth state when the user's identity is no longer valid.
+      if (error.type === 'session_expired' || error.type === 'account_blocked') {
         this.isAuthenticated = false
         this.user = null
         this.accessToken = null

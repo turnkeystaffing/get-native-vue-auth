@@ -1,41 +1,22 @@
 /**
  * Vitest Test Setup
  *
- * Global setup for component tests including Vuetify polyfills
- * and auth plugin configuration.
+ * Global setup for component tests and auth plugin configuration.
  */
 
 import { vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { setGlobalConfig } from './config'
 import type { BffAuthConfig } from './types/config'
 
-// Mock ResizeObserver for Vuetify components
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn()
-}))
-
-// Mock IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn()
-}))
-
-// Mock matchMedia for responsive tests
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn()
-  }))
+/**
+ * Stub icon component used in tests where icon rendering is not under test.
+ * Keeps the config shape (Component | false) satisfied without pulling in
+ * the bundled FluentUI SFCs.
+ */
+const IconStub = defineComponent({
+  name: 'IconStub',
+  render: () => h('span', { 'data-testid': 'icon-stub' })
 })
 
 /**
@@ -52,12 +33,17 @@ export const testConfig: BffAuthConfig = {
     debug: vi.fn()
   } as any,
   icons: {
-    sessionExpired: 'mdi-clock-alert-outline',
-    login: 'mdi-login',
-    permissionDenied: 'mdi-shield-alert',
-    serviceUnavailable: 'mdi-cloud-off-outline',
-    retry: 'mdi-refresh'
+    sessionExpired: IconStub,
+    login: IconStub,
+    serviceUnavailable: IconStub,
+    retry: IconStub,
+    devError: IconStub,
+    accountBlocked: IconStub,
+    serverError: IconStub,
+    signOut: IconStub
   },
+  errorViews: {},
+  text: {},
   mode: 'token'
 }
 setGlobalConfig(testConfig)

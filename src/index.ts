@@ -7,7 +7,7 @@
  * - Vue composable for component integration
  * - Axios interceptors for automatic token injection
  * - Vue Router guards for route protection
- * - Pre-built UI components for auth error handling
+ * - Zero-framework `AuthErrorBoundary` for session-expired and service-unavailable UX
  *
  * @see README.md for usage instructions
  */
@@ -33,10 +33,17 @@ export {
   AuthService,
   AuthConfigurationError,
   parseAuthError,
-  mapErrorType,
   isAuthConfigured
 } from './services/auth'
 export type { LoginCredentials, LoginOptions, LoginWithCustomClientOptions, CompleteOAuthFlowOptions } from './services/auth'
+
+// Error-code map + helpers
+export {
+  ERROR_CODE_TO_TYPE,
+  KNOWN_INLINE_CODES,
+  mapErrorCodeToType,
+  statusFallbackType
+} from './services/errorCodeMap'
 
 // Interceptors
 export { setupAuthInterceptors } from './services/interceptors'
@@ -72,10 +79,16 @@ export type {
   BffAuthPluginOptions,
   BffAuthConfig,
   AuthIcons,
+  AuthText,
+  AuthErrorViews,
+  SessionExpiredViewProps,
+  ServiceUnavailableViewProps,
+  DevErrorViewProps,
+  AccountBlockedViewProps,
+  ServerErrorViewProps,
+  UnmappedErrorHook,
   AuthMode
 } from './types'
 
 // Components
-export { default as SessionExpiredModal } from './components/SessionExpiredModal.vue'
-export { default as PermissionDeniedToast } from './components/PermissionDeniedToast.vue'
-export { default as ServiceUnavailableOverlay } from './components/ServiceUnavailableOverlay.vue'
+export { default as AuthErrorBoundary } from './components/AuthErrorBoundary.vue'

@@ -21,4 +21,17 @@ export type {
   TwoFactorErrorResponse
 } from './auth'
 
-export type { BffAuthPluginOptions, BffAuthConfig, AuthIcons, AuthMode } from './config'
+export type {
+  BffAuthPluginOptions,
+  BffAuthConfig,
+  AuthIcons,
+  AuthText,
+  AuthErrorViews,
+  SessionExpiredViewProps,
+  ServiceUnavailableViewProps,
+  DevErrorViewProps,
+  AccountBlockedViewProps,
+  ServerErrorViewProps,
+  UnmappedErrorHook,
+  AuthMode
+} from './config'

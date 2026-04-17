@@ -1,66 +1,141 @@
 # Component Inventory: @turnkeystaffing/get-native-vue-auth
 
-**Generated:** 2026-02-04
-**Scan Level:** Quick
+**Version:** 2.0.0
+**Generated:** 2026-04-18
 
-## Overview
+All components live in `src/components/`. The only publicly exported component is `AuthErrorBoundary`. Views are used internally by the boundary and are NOT exported from `src/index.ts`, but their props types are (`SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `DevErrorViewProps`, `AccountBlockedViewProps`, `ServerErrorViewProps`) so consumers can write type-safe replacements.
 
-The library includes 3 pre-built Vuetify UI components for authentication error handling. All components are Vue 3 Single File Components (SFCs) that react to the Pinia auth store's error state.
+---
 
-## Components
+## Public
 
-### SessionExpiredModal
+### `AuthErrorBoundary` — `src/components/AuthErrorBoundary.vue`
 
-- **File:** `src/components/SessionExpiredModal.vue`
-- **Test:** `src/components/__tests__/SessionExpiredModal.spec.ts`
-- **Category:** Error UI / Modal
-- **Purpose:** Displays a persistent modal dialog when the user's session expires (401 error)
-- **Trigger:** `authStore.error.type === 'session_expired'`
-- **Behavior:** Persistent (cannot be dismissed without action), prompts user to sign in again
-- **Dependencies:** Vuetify dialog components
-- **Icons:** `sessionExpired` (default: `mdi-clock-alert-outline`), `login` (default: `mdi-login`)
+**Role:** Top-level overlay controller. Watches `useAuth().error` and renders the appropriate view (or the consumer-provided override) based on `error.type`.
 
-### PermissionDeniedToast
+**How to mount:** The plugin registers it globally as `<AuthErrorBoundary/>`. Place it once in your root layout — it renders nothing when `error === null`.
 
-- **File:** `src/components/PermissionDeniedToast.vue`
-- **Test:** `src/components/__tests__/PermissionDeniedToast.spec.ts`
-- **Category:** Error UI / Toast
-- **Purpose:** Shows a non-blocking toast notification when the user lacks permission for an action (403 error)
-- **Trigger:** `authStore.error.type === 'permission_denied'`
-- **Behavior:** Auto-dismisses after 5 seconds
-- **Dependencies:** Vuetify snackbar components
-- **Icons:** `permissionDenied` (default: `mdi-shield-alert`)
+**Responsibilities:**
+- View selection via `error.type → config.errorViews.<type> ?? bundled view`.
+- Props assembly — each view receives only the props its contract defines.
+- **Accessibility:**
+  - `<Teleport to="body">` — escapes the app shell.
+  - Focus trap — Tab/Shift+Tab cycle within the overlay root.
+  - Scroll lock — `document.body.style.overflow = 'hidden'`.
+  - Previously-focused element captured on open, restored on close.
+  - `primaryAction` focused on mount AND when `error.type` changes (so auto-retry escalations move focus correctly).
+- **Sign-in flow** — applies `recordLoginAttempt()` itself before calling `authStore.login(window.location.href)`; on trip, flips to `service_unavailable` so the overlay stays in place instead of looping the redirect.
+- **Sign-out flow** — calls `authStore.logout()`; clears error as a safety net for test environments where the redirect doesn't execute.
+- **Retry flow** — calls `authStore.initAuth()`; clears error on successful re-auth; escalates to `session_expired` when the backend responds OK but identity is still missing.
+- **Dismiss flow** — `ServerErrorView` emits `dismiss` → `authStore.clearError()`.
 
-### ServiceUnavailableOverlay
+---
 
-- **File:** `src/components/ServiceUnavailableOverlay.vue`
-- **Test:** `src/components/__tests__/ServiceUnavailableOverlay.spec.ts`
-- **Category:** Error UI / Overlay
-- **Purpose:** Full-screen overlay with retry countdown when the auth service is unavailable (503 error)
-- **Trigger:** `authStore.error.type === 'service_unavailable'`
-- **Behavior:** Automatic retry countdown + manual "Try Now" button
-- **Dependencies:** Vuetify overlay components
-- **Icons:** `serviceUnavailable` (default: `mdi-cloud-off-outline`), `retry` (default: `mdi-refresh`)
+## Bundled Views
 
-## Icon Customization
+Each view consumes its typed props interface, exposes a `primaryAction` ref via `defineExpose`, and pulls copy from `config.text.<category>?.*` with English defaults. All share `overlay.css`.
 
-All component icons are configurable via the plugin options. Each icon accepts a `string` (icon class name) or `false` (disables the icon entirely):
+### `SessionExpiredView.vue`
+- **Props:** `SessionExpiredViewProps` — `{ error, onSignIn, config }`.
+- **Root:** `role="alertdialog"`, `aria-modal="true"`, `aria-live="assertive"`.
+- **Default copy:** title `"Session expired"`, message `"Your session has ended. Sign in again to continue."`, CTA `"Sign in"`. Message falls back to `error.message` if a custom message wasn't injected via `config.text`.
+- **Icon slots:** `config.icons.sessionExpired` (title), `config.icons.login` (inside button).
+- **Behavior:** Primary button calls `onSignIn`; `isLoading` disables it while the promise is pending. `aria-busy` mirrors `isLoading`.
+
+### `ServiceUnavailableView.vue`
+- **Props:** `ServiceUnavailableViewProps` — `{ error, onRetry, config }`.
+- **Default copy:** title `"Service unavailable"`, message `"We're having trouble connecting to authentication services."`, CTA `"Try now"`, retrying label `"Retrying..."`, countdown `"Retry in {n}s"` (overridable via `config.text.serviceUnavailable.countdownLabel(seconds)`).
+- **Icon slots:** `config.icons.serviceUnavailable` (pulsing danger styling), `config.icons.retry` (spinning icon while retrying).
+- **Behavior:**
+  - 30-second countdown (`COUNTDOWN_SECONDS`). Hit zero → auto-retry.
+  - `progressbar` role with `aria-valuenow/min/max`.
+  - If retry resolves and the view is still mounted (parent kept `service_unavailable`), restart countdown — avoids stuck `"Retry in 0s"`.
+  - `dark-mode` media query adjusts muted/danger tokens.
+  - `bff-icon-pulse` keyframes animate icon opacity; `bff-spin` rotates the retry icon while retrying.
+
+### `DevErrorView.vue`
+- **Props:** `DevErrorViewProps` — `{ error, onSignOut, config }`.
+- **Default copy:** title `"Configuration error"`, message `"The application is not correctly configured to connect to authentication services."`, contact line `"Contact the application developer."`, CTA `"Sign out"`.
+- **Icon slots:** `config.icons.devError` (danger styling), `config.icons.signOut`.
+- **Distinctive:** Renders `error.code` in a monospace pill labeled `"Error code:"` — this is the one category where the raw code is shown, because the audience is a developer.
+
+### `AccountBlockedView.vue`
+- **Props:** `AccountBlockedViewProps` — `{ error, onSignOut, config }`.
+- **Default copy (branched on `error.code`):**
+  - `insufficient_permissions` → title `"Access required"`, message `"You don't have access to this feature. Please request access from your administrator."`
+  - otherwise (e.g., `account_inactive`) → title `"Account unavailable"`, message `"Your account has been disabled. Please contact your administrator for assistance."`
+- **Icon slots:** `config.icons.accountBlocked` (danger), `config.icons.signOut`.
+- **CTA:** Sign out — the only recovery, since the identity is invalid at the backend level.
+
+### `ServerErrorView.vue`
+- **Props:** `ServerErrorViewProps` — `{ error, config }`.
+- **Emits:** `dismiss` (no payload).
+- **Default copy:** title `"Something went wrong"`, message `"An unexpected error occurred. Please contact your administrator for assistance."`, CTA `"Dismiss"`.
+- **Icon slot:** `config.icons.serverError` (danger).
+- **Distinctive:** No action callback — dismiss-only. `AuthErrorBoundary` wires the `dismiss` event to `authStore.clearError()`.
+
+---
+
+## Icons — `src/components/icons/*`
+
+Bundled FluentUI SVG components (Vue SFCs). Each is a component ref that consumers can swap via `config.icons.*`.
+
+| Icon | File | Used by (default) |
+|---|---|---|
+| `IconSessionExpired` | `IconSessionExpired.vue` | `sessionExpired` |
+| `IconLogin` | `IconLogin.vue` | `login` (session-expired button) AND `signOut` (directional door reads both ways) |
+| `IconServiceUnavailable` | `IconServiceUnavailable.vue` | `serviceUnavailable`, `devError`, `accountBlocked`, `serverError` — reused as "something's not right" |
+| `IconRetry` | `IconRetry.vue` | `retry` |
+
+`DEFAULT_ICONS` (exported from `src/plugin.ts`) wires these defaults. Consumers may:
+- Pass `config.icons.<slot>` to override with any component.
+- Pass `config.icons.<slot> = false` to disable rendering entirely.
+
+---
+
+## Theming Surface
+
+All styling is scoped to `src/components/views/overlay.css` and uses CSS custom properties prefixed `--bff-auth-*`. Consumers override by setting these variables on any ancestor (usually `:root`). The full list is documented in [README.md](../README.md) under **Theming**.
+
+Key tokens (from the stylesheet):
+- `--bff-auth-danger` / dark-mode override
+- `--bff-auth-accent` (progress bar fill)
+- `--bff-auth-muted`
+- `--bff-auth-progress-bg`
+- `--bff-auth-icon-danger-bg`
+- `--bff-auth-code-bg`
+
+`prefers-color-scheme: dark` adjusts muted/danger tokens automatically without consumer config.
+
+---
+
+## Escape Hatch: Full View Replacement
+
+Consumers can replace any bundled view wholesale via `config.errorViews.<category>`:
 
 ```typescript
+import type { SessionExpiredViewProps } from '@turnkeystaffing/get-native-vue-auth'
+import MyCustomSessionExpiredView from './MyCustomSessionExpiredView.vue'
+
 app.use(bffAuthPlugin, {
   bffBaseUrl: '...',
   clientId: '...',
-  icons: {
-    sessionExpired: 'fa-solid fa-clock',    // Override with Font Awesome
-    permissionDenied: false,                 // Disable icon
-    // Others keep MDI defaults
+  errorViews: {
+    sessionExpired: MyCustomSessionExpiredView
   }
 })
 ```
 
-## Design Patterns
+The custom component must accept the corresponding `*ViewProps` interface. For `ServerErrorView` replacements, emit `dismiss` to close the overlay (the boundary handles the rest).
 
-- **Reactive store binding:** Components watch `authStore.error` for their specific error type
-- **Vuetify-based:** All components use Vuetify's component library for consistent Material Design UI
-- **Zero-config:** Components work out of the box when placed in the app template
-- **Configurable icons:** MDI defaults with full override/disable support via plugin options
+To expose a primary action for the boundary's focus management:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+const myButton = ref<HTMLButtonElement | null>(null)
+defineExpose({ primaryAction: myButton })
+</script>
+```
+
+If `primaryAction` isn't exposed, the boundary falls back to focusing the first focusable element in the overlay.

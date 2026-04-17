@@ -33,9 +33,6 @@ export default defineConfig({
         'axios',
         'vue-router',
         'jwt-decode',
-        'vuetify',
-        'vuetify/components',
-        'vuetify/directives',
         '@turnkeystaffing/get-native-vue-logger'
       ],
       output: {
@@ -45,7 +42,6 @@ export default defineConfig({
           axios: 'axios',
           'vue-router': 'VueRouter',
           'jwt-decode': 'jwtDecode',
-          vuetify: 'Vuetify',
           '@turnkeystaffing/get-native-vue-logger': 'GetNativeVueLogger'
         }
       }

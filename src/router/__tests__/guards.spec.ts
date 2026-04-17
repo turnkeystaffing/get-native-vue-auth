@@ -10,6 +10,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 import { createAuthGuard, setupAuthGuard, type AuthGuardDependencies } from '../guards'
 import { useAuthStore } from '../../stores/auth'
+import type { AuthError } from '../../types/auth'
 
 // Mock logger
 vi.mock('@turnkeystaffing/get-native-vue-logger', () => ({
@@ -71,7 +72,9 @@ describe('Auth Guards', () => {
   interface MockStore {
     isAuthenticated: boolean
     isLoading: boolean
+    error: AuthError | null
     initAuth: ReturnType<typeof vi.fn>
+    setError: ReturnType<typeof vi.fn>
     $patch: ReturnType<typeof vi.fn>
   }
 
@@ -88,14 +91,17 @@ describe('Auth Guards', () => {
   function createMockDeps(overrides: {
     isAuthenticated?: boolean
     isLoading?: boolean
+    error?: AuthError | null
     initAuth?: () => Promise<void>
   } = {}): { deps: AuthGuardDependencies; mocks: { store: MockStore; service: MockService } } {
     const store: MockStore = {
       isAuthenticated: overrides.isAuthenticated ?? false,
       isLoading: overrides.isLoading ?? false,
+      error: overrides.error ?? null,
       initAuth: overrides.initAuth
         ? vi.fn(overrides.initAuth)
         : vi.fn().mockResolvedValue(undefined),
+      setError: vi.fn(),
       $patch: vi.fn((patch: { isAuthenticated?: boolean; isLoading?: boolean }) => {
         if (patch.isAuthenticated !== undefined) store.isAuthenticated = patch.isAuthenticated
         if (patch.isLoading !== undefined) store.isLoading = patch.isLoading
@@ -326,6 +332,101 @@ describe('Auth Guards', () => {
 
       vi.useRealTimers()
       consoleSpy.mockRestore()
+    })
+  })
+
+  describe('terminal auth errors', () => {
+    it('allows navigation and does NOT redirect when error.type is account_blocked', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: {
+          type: 'account_blocked',
+          code: 'account_inactive',
+          message: 'Your account is inactive'
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(router.currentRoute.value.path).toBe('/protected')
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+
+    it('allows navigation and does NOT redirect when error.type is dev_error', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: {
+          type: 'dev_error',
+          code: 'invalid_client',
+          message: 'Application misconfigured'
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(router.currentRoute.value.path).toBe('/protected')
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+
+    it('allows navigation and does NOT redirect when error.type is service_unavailable', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: {
+          type: 'service_unavailable',
+          message: 'Upstream temporarily unavailable'
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(router.currentRoute.value.path).toBe('/protected')
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+
+    it('allows navigation and does NOT redirect when error.type is server_error', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: {
+          type: 'server_error',
+          message: 'Unexpected server error'
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(router.currentRoute.value.path).toBe('/protected')
+      expect(mocks.service.login).not.toHaveBeenCalled()
+    })
+
+    it('still redirects to login when error.type is session_expired', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: {
+          type: 'session_expired',
+          message: 'Your session has expired'
+        }
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
+    })
+
+    it('still redirects when error is null and user is unauthenticated (regression guard)', async () => {
+      const { deps, mocks } = createMockDeps({
+        isAuthenticated: false,
+        error: null
+      })
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(mocks.service.login).toHaveBeenCalledWith({ returnUrl: '/protected' })
     })
   })
 

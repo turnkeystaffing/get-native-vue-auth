@@ -39,32 +39,61 @@ export interface TokenResponse {
 }
 
 /**
- * Auth error types mapped from backend error_type
- * PAT-004: Error type mapping
+ * Auth error types — five recovery categories.
  *
- * - session_expired: 401 - authentication_error
- * - permission_denied: 403 - authorization_error
- * - service_unavailable: 503 - auth_service_unavailable
+ * Each type corresponds to a distinct user-recovery UX:
+ * - `session_expired`: re-authenticate (clears auth state)
+ * - `service_unavailable`: wait and retry (countdown UI, does not clear auth)
+ * - `dev_error`: OAuth client misconfiguration — terminal; "Contact developer" CTA (does not clear auth)
+ * - `account_blocked`: account disabled or insufficient permissions — terminal; "Sign out" CTA (clears auth)
+ * - `server_error`: unhandled server/infra failure — terminal; shows `request_id` for support (does not clear auth)
+ *
+ * Routing is driven by a lowercased error-code table (`ERROR_CODE_TO_TYPE`) with
+ * HTTP-status fallbacks when the code is absent.
+ *
+ * @see PAT-004 Error type mapping
  */
-export type AuthErrorType = 'session_expired' | 'permission_denied' | 'service_unavailable'
+export type AuthErrorType =
+  | 'session_expired'
+  | 'service_unavailable'
+  | 'dev_error'
+  | 'account_blocked'
+  | 'server_error'
 
 /**
- * Auth error structure for frontend error handling
+ * Auth error structure for frontend error handling.
+ *
+ * View behavior is driven entirely by `type` (recovery category) and `code`
+ * (lowercased backend code, e.g., `insufficient_permissions`, `reauth_required`).
+ * No auxiliary data is carried on the error; views render from code alone.
+ *
+ * @see PAT-004 Error type mapping
  */
 export interface AuthError {
   type: AuthErrorType
   message: string
-  retryAfter?: number // For service_unavailable errors
+  /** Lowercased backend error code (e.g., `reauth_required`, `account_inactive`) */
+  code?: string
 }
 
 /**
- * Backend error response structure (ADR-003)
+ * Backend error response body.
+ *
+ * Canonical shape (RFC 6749 style):
+ *
+ *     { "error": "ERROR_CODE", "error_description": "Human-readable description" }
+ *
+ * `error` is widened to `string` because backend emits both RFC 6749 lowercase
+ * codes (`invalid_grant`) and `UPPER_CASE` Auth API codes (`MISSING_TOKEN`). The
+ * interceptor normalizes via `mapErrorCodeToType` (lowercases).
+ *
+ * @see PAT-004 Error type mapping
  */
 export interface BackendAuthError {
-  detail: string
-  error_type: 'authentication_error' | 'authorization_error' | 'auth_service_unavailable'
-  required_scope?: string // For authorization_error
-  retry_after?: number // For auth_service_unavailable
+  /** Error code (any casing) — lowercased before routing through the code→category map */
+  error?: string
+  /** Human-readable description; used as `AuthError.message` */
+  error_description?: string
 }
 
 /**

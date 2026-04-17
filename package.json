@@ -1,6 +1,6 @@
 {
   "name": "@turnkeystaffing/get-native-vue-auth",
-  "version": "1.8.1",
+  "version": "2.0.0",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
@@ -16,13 +16,15 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./dist/get-native-vue-auth.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "vite build",
+    "demo": "vite --config vite.config.demo.ts",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -36,8 +38,7 @@
     "jwt-decode": "^4.0.0",
     "pinia": "^3.0.4",
     "vue": "^3.4.0",
-    "vue-router": "^4.0.0",
-    "vuetify": "^3.0.0"
+    "vue-router": "^4.0.0"
   },
   "devDependencies": {
     "@turnkeystaffing/get-native-vue-logger": "^1.0.0",
@@ -58,8 +59,7 @@
     "vitest": "^4.0.18",
     "vue": "^3.4.0",
     "vue-eslint-parser": "^10.2.0",
-    "vue-router": "^4.0.0",
-    "vuetify": "^3.0.0"
+    "vue-router": "^4.0.0"
   },
   "resolutions": {
     "tar": ">=7.5.7"

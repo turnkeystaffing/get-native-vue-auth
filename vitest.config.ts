@@ -10,15 +10,7 @@ export default mergeConfig(
       exclude: [...configDefaults.exclude],
       root: fileURLToPath(new URL('./', import.meta.url)),
       setupFiles: ['./src/test-setup.ts'],
-      deps: {
-        inline: ['vuetify']
-      },
-      css: true,
-      server: {
-        deps: {
-          inline: ['vuetify']
-        }
-      }
+      css: true
     },
   }),
 )

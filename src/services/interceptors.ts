@@ -8,7 +8,11 @@
  * authenticated requests. For public endpoints, use publicClient instead.
  *
  * Request interceptor: Injects Bearer token for authenticated users (AC1)
- * Response interceptor: Handles auth errors - 401, 403, 503 (AC2, AC3, AC4)
+ * Response interceptor: Routes error codes into the five recovery categories
+ * (`session_expired`, `service_unavailable`, `dev_error`, `account_blocked`,
+ * `server_error`) via the canonical code→category map. Views render from
+ * `AuthError.code` alone — no auxiliary data (scopes, request_id, retry_after)
+ * is carried.
  *
  * @see ADR-005 Auth state structure
  * @see ADR-006 Token refresh strategy
@@ -19,6 +23,7 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios'
 import type { AuthError, BackendAuthError } from '../types/auth'
 import { parseAuthError, AuthConfigurationError, isAuthConfigured } from './auth'
+import { ERROR_CODE_TO_TYPE, KNOWN_INLINE_CODES, statusFallbackType } from './errorCodeMap'
 import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 
@@ -48,14 +53,20 @@ export interface AuthStoreInterface {
  * - Adds Authorization: Bearer {token} header for authenticated users
  *
  * Response interceptor:
- * - Parses structured auth errors using parseAuthError()
- * - Sets auth store error state for 401 (session_expired)
- * - Sets auth store error state for 403 (permission_denied)
- * - Sets auth store error state for 503 with auth_service_unavailable
- * - Always propagates error to caller
+ * - Routes `error` (lowercased) through the canonical code→category map
+ *   (merged with consumer `errorCodeOverrides` from plugin config).
+ * - Synthesizes `{ type: 'service_unavailable', code: 'rate_limit_exceeded' }`
+ *   for 429 responses without a code.
+ * - Emits `onUnmappedError(code, status, error)` + `console.warn` (dev only)
+ *   when the code is non-empty, not in the merged map, and not inline.
+ * - Preserves the 401-without-code fallback (`session_expired`) and the
+ *   `isAuthConfigured()` guard that suppresses errors when no config is set.
+ * - Always propagates the rejection to the caller.
  *
  * @param axiosInstance - Axios instance to configure (should be for protected endpoints only)
  * @param getAuthStore - Function to get auth store (avoids circular deps)
+ *
+ * @see PAT-004 Error type mapping
  *
  * @example
  * ```typescript
@@ -112,42 +123,109 @@ export function setupAuthInterceptors(
     (error) => Promise.reject(error)
   )
 
-  // Response interceptor - handle auth errors
+  // Response interceptor - route auth errors into recovery categories
   axiosInstance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError<BackendAuthError>) => {
       const authStore = getAuthStore()
-      const status = error.response?.status
+      const response = error.response
+      const status = response?.status ?? 0
 
-      // Parse structured auth error from response
-      const authError = parseAuthError(error)
+      // Read consumer-provided overrides + drift hook from plugin config
+      // (matches the pattern used for `mode: 'cookie'` above).
+      const config = getGlobalConfig()
+      const overrides = config?.errorCodeOverrides
+      const onUnmappedError = config?.onUnmappedError
 
-      // GUARD: Don't set auth errors for 401 if auth isn't configured
-      // This prevents overwriting service_unavailable with session_expired
+      const body = response?.data ?? ({} as BackendAuthError)
+      const rawCode = body.error
+      const code =
+        typeof rawCode === 'string' && rawCode.length > 0 ? rawCode.toLowerCase() : null
+
+      // GUARD: Don't set auth errors for 401 if auth isn't configured.
+      // Prevents overwriting service_unavailable set by an earlier guard.
       if (status === 401 && !isAuthConfigured()) {
         logger.warn('401 received but auth is not configured, ignoring')
-        // Don't set error - let service_unavailable remain from earlier guard
-      } else if (authError) {
-        // Structured auth error found - use it
+        return Promise.reject(error)
+      }
+
+      // Attempt structured routing via the code→category map (with overrides).
+      const authError = parseAuthError(error, overrides)
+      if (authError) {
         authStore.setError(authError)
-      } else if (status === 401) {
-        // Fallback for 401 without structured error
+        return Promise.reject(error)
+      }
+
+      // parseAuthError returned null. Disambiguate:
+      //   (a) code was present but unknown / inline / override-null
+      //   (b) no code at all — apply status fallback
+      if (code) {
+        // Known inline — propagate silently (no drift warning).
+        if (KNOWN_INLINE_CODES.has(code)) {
+          return Promise.reject(error)
+        }
+
+        // Override explicitly mapped to null — treat as inline/silent.
+        if (overrides && Object.prototype.hasOwnProperty.call(overrides, code)) {
+          return Promise.reject(error)
+        }
+
+        // Check merged membership — if the code isn't in either the canonical
+        // map or overrides, it's drift. Fire the hook + dev warn.
+        const inCanonical = Object.prototype.hasOwnProperty.call(ERROR_CODE_TO_TYPE, code)
+        if (!inCanonical) {
+          if (onUnmappedError) {
+            try {
+              // Support sync + async hooks without leaking unhandled rejections.
+              Promise.resolve(onUnmappedError(code, status, error)).catch((hookErr) => {
+                logger.warn('onUnmappedError hook rejected', hookErr)
+              })
+            } catch (hookErr) {
+              logger.warn('onUnmappedError hook threw', hookErr)
+            }
+          }
+          // Dev-only console drift warning. Vite statically replaces
+          // `import.meta.env.DEV` at build time; bare access (no optional chain)
+          // is required for the replacement to fire and strip the branch in
+          // production bundles.
+          if (import.meta.env.DEV) {
+            console.warn('[auth] unmapped error code', { code, status })
+          }
+        }
+
+        // Fall through to status fallback for a generic overlay if any.
+      }
+
+      // Special-case 429: if we got here without a code, synthesize
+      // rate_limit_exceeded so the overlay renders.
+      if (status === 429 && !code) {
+        authStore.setError({
+          type: 'service_unavailable',
+          code: 'rate_limit_exceeded',
+          message: body.error_description || 'Too many requests. Please try again shortly.'
+        })
+        return Promise.reject(error)
+      }
+
+      // Naked status fallback (no structured error).
+      const fallbackType = statusFallbackType(status)
+      if (fallbackType === 'session_expired') {
         authStore.setError({
           type: 'session_expired',
           message: 'Your session has expired. Please sign in again.'
         })
-      } else if (status === 403) {
-        // Fallback for 403 without structured error
-        const detail = error.response?.data?.detail
+      } else if (fallbackType === 'service_unavailable' && status === 429) {
+        // Covered by the 429 branch above — kept for completeness.
         authStore.setError({
-          type: 'permission_denied',
-          message: typeof detail === 'string' ? detail : 'Permission denied'
+          type: 'service_unavailable',
+          code: 'rate_limit_exceeded',
+          message: body.error_description || 'Too many requests. Please try again shortly.'
         })
       }
-      // Note: 503 without auth error_type is NOT an auth error (e.g., server down)
-      // We only set auth error for 503 if parseAuthError detected auth_service_unavailable
+      // 503 without an auth error code is NOT treated as an auth error.
+      // 403 without a recognized code is intentionally NOT overlaid — map drift
+      // is reported via onUnmappedError / console.warn above.
 
-      // Always propagate error to caller
       return Promise.reject(error)
     }
   )

@@ -1,67 +1,68 @@
 # Project Overview: @turnkeystaffing/get-native-vue-auth
 
-**Generated:** 2026-02-04
-**Version:** 1.3.3
-**License:** Proprietary - Turnkey Staffing
+**Version:** 2.0.0
+**Generated:** 2026-04-18 (full rescan)
 
 ## Purpose
 
-Vue 3 authentication plugin for BFF (Backend-for-Frontend) authentication flows. Provides a complete client-side authentication solution for Vue applications that communicate with a BFF server handling OAuth flows, session management, and token issuance.
+Vue 3 plugin library providing a turnkey BFF-authentication integration for Turnkey product SPAs: Pinia store, Axios interceptors, Vue Router guard, login-redirect circuit breaker, JWT utilities, and a zero-dependency overlay component with five error-recovery views. Plug it into `app.use(bffAuthPlugin, { bffBaseUrl, clientId })`, attach `setupAuthInterceptors` to your Axios client, call `setupAuthGuard(router)`, and drop `<AuthErrorBoundary/>` into your root layout.
 
-## Executive Summary
+## Quick Reference
 
-This library encapsulates all authentication concerns for Vue 3 applications in the Turnkey Staffing ecosystem. It implements the BFF pattern where a server-side component manages OAuth tokens and sessions, while this client-side plugin handles:
-
-- **Session lifecycle** — init, check, login, logout
-- **Token management** — acquisition, refresh, injection into API calls
-- **Route protection** — Vue Router guards blocking unauthenticated access
-- **Error handling** — typed error states with pre-built Vuetify UI components
-- **JWT utilities** — decode tokens, extract user claims
-
-The library supports two authentication flows:
-1. **Product SPA flow** — redirect-based login via BFF
-2. **Central Login flow** — credential submission + OAuth completion for the login application itself
-
-## Tech Stack Summary
-
-| Category | Technology |
-|----------|-----------|
-| Language | TypeScript (strict, ES2020) |
-| Framework | Vue 3 (Composition API) |
-| State | Pinia ^3.0.4 |
-| HTTP | Axios ^1.6.0 |
-| Router | Vue Router ^4.0.0 |
-| UI | Vuetify ^3.0.0 |
-| Build | Vite 7 (library mode, ES module) |
-| Test | Vitest 4, @vue/test-utils, jsdom |
-| Package Mgr | Yarn 4.12.0 |
-
-## Architecture Type
-
-**Plugin/Library** — distributed as a single ES module via GitHub Packages (`@turnkeystaffing` scope). All runtime dependencies are peer dependencies.
+| | |
+|---|---|
+| **Package** | `@turnkeystaffing/get-native-vue-auth` |
+| **Registry** | GitHub Packages (`@turnkeystaffing` scope → `https://npm.pkg.github.com`) |
+| **Primary language** | TypeScript (strict, ES2020, `moduleResolution: bundler`) |
+| **Framework** | Vue 3 + Pinia 3 + Axios + Vue Router 4 + jwt-decode (all peer dependencies) |
+| **Build** | Vite 7 library mode, ESM-only output, `vite-plugin-dts` rollup-bundled types |
+| **Tests** | Vitest 4 + @vue/test-utils 2.4 + jsdom 26 |
+| **Package manager** | Yarn Berry 4.12.0 |
+| **Repository type** | Monolith, single deliverable |
+| **Architecture** | Layered Vue plugin — config → service → state → interceptors → router → composition → presentation |
+| **Entry point** | `src/index.ts` |
 
 ## Repository Structure
 
-**Type:** Monolith (single cohesive codebase)
+Single Vue 3 library deliverable. `demo/` is a dev-only Vue app used via `yarn demo` for visual component testing (logger stubbed). `dist/` contains built artifacts (`index.js` ESM + `index.d.ts` + CSS). Only `dist/` is published (`"files": ["dist"]`).
 
-```
-src/
-├── index.ts          # Barrel exports
-├── plugin.ts         # Vue plugin installer
-├── config.ts         # Config injection
-├── composables/      # useAuth composable
-├── stores/           # Pinia auth store
-├── services/         # AuthService + Axios interceptors
-├── router/           # Auth guards
-├── components/       # 3 Vuetify error UI components
-├── types/            # TypeScript interfaces
-└── utils/            # JWT utilities
-```
+No in-repo CI (`.github/workflows/` absent) — release automation lives outside this repository.
 
-## Key Documentation
+## Public API at a Glance
 
-- [Architecture](./architecture.md) — Module architecture, data flows, type system, BFF API contract
-- [Source Tree Analysis](./source-tree-analysis.md) — Annotated directory structure
-- [Development Guide](./development-guide.md) — Setup, build, test commands
-- [Component Inventory](./component-inventory.md) — UI component catalog
-- [README](../README.md) — Usage documentation and API reference
+- **Plugin:** `bffAuthPlugin`, `DEFAULT_ICONS`
+- **Config:** `useAuthConfig`, `BFF_AUTH_CONFIG_KEY`, `getGlobalConfig`, `setGlobalConfig`
+- **State:** `useAuthStore`, types `AuthState` & `AuthStore`
+- **Composition:** `useAuth`, type `UseAuth`
+- **Auth service:** `authService`, `useAuthService`, class `AuthService`, `AuthConfigurationError`, `parseAuthError`, `isAuthConfigured`
+- **Error-code map:** `ERROR_CODE_TO_TYPE`, `KNOWN_INLINE_CODES`, `mapErrorCodeToType`, `statusFallbackType`
+- **Interceptors:** `setupAuthInterceptors`, type `AuthStoreInterface`
+- **Router:** `setupAuthGuard`, `createAuthGuard`, type `AuthGuardDependencies`
+- **JWT utilities:** `decodeJwt`, `extractEmailFromJwt`, `decodeAccessToken`, type `JwtPayload`
+- **Circuit breaker:** `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken`
+- **Component:** `AuthErrorBoundary` (default export from the `.vue` module)
+- **Types:** every type under `src/types/*` — see `src/index.ts` barrel for the authoritative list.
+
+## Recovery Categories
+
+`AuthErrorType` has five values, each mapped to a dedicated bundled view:
+
+| Category | When it triggers | User action | Identity cleared |
+|---|---|---|---|
+| `session_expired` | Session/token invalid, or bare 401 | Sign in (full-page redirect) | ✅ |
+| `service_unavailable` | Backend overloaded, bare 429, rate-limited, `AuthConfigurationError` | Wait — 30s auto-retry | ❌ |
+| `dev_error` | OAuth client misconfigured | Sign out (app is broken) | ❌ |
+| `account_blocked` | Account disabled or insufficient permissions | Sign out | ✅ |
+| `server_error` | Unhandled server/infra failure | Dismiss overlay | ❌ |
+
+Backend codes are routed through `ERROR_CODE_TO_TYPE`; consumers can extend via `errorCodeOverrides` and instrument drift via `onUnmappedError`. See [error-handling-analysis.md](./error-handling-analysis.md) and [auth-error-codes.md](./auth-error-codes.md) for the full table.
+
+## Related Documentation
+
+- [Architecture](./architecture.md) — layers, module responsibilities, data flow, security notes
+- [Source Tree Analysis](./source-tree-analysis.md) — annotated tree + entry points
+- [Component Inventory](./component-inventory.md) — overlay + views + icons
+- [State Management](./state-management.md) — Pinia store shape & transitions
+- [API Contracts](./api-contracts.md) — BFF endpoints called by `AuthService`
+- [Development Guide](./development-guide.md) — scripts, demo app, test workflow
+- [README.md](../README.md) — consumer quickstart, theming, migration from 1.x
