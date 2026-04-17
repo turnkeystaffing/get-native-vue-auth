@@ -153,6 +153,20 @@ export function createAuthGuard(
         return true
       }
 
+      // If a terminal or non-login-fixable error is already set, let the overlay
+      // stay visible instead of redirecting. `session_expired` is the only error
+      // category where login is the correct remediation; others (`account_blocked`,
+      // `dev_error`, `service_unavailable`, `server_error`) won't be resolved by
+      // another login attempt and redirecting would just pile up circuit-breaker
+      // pressure, eventually overwriting the real overlay with `service_unavailable`.
+      if (authStore.error && authStore.error.type !== 'session_expired') {
+        logger.info('Terminal auth error set, skipping login redirect', {
+          type: authStore.error.type,
+          code: authStore.error.code
+        })
+        return true
+      }
+
       // Not authenticated - redirect to Central Login (BFF handles return URL via redirect_url param)
       return redirectOrTrip(authSvc, authStore, to.fullPath)
     } catch (error) {

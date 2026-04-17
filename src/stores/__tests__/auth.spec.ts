@@ -135,6 +135,43 @@ describe('AuthStore', () => {
 
       expect(store.isAuthenticated).toBe(false)
       expect(store.isLoading).toBe(false)
+      expect(store.error).toBeNull()
+    })
+
+    it('routes axios error with mapped code through parseAuthError (account_inactive → account_blocked)', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          status: 403,
+          data: { error: 'account_inactive', error_description: 'Your account is inactive' }
+        }
+      }
+      vi.mocked(authService.checkAuth).mockRejectedValue(axiosError)
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(store.isLoading).toBe(false)
+      expect(store.error).toEqual({
+        type: 'account_blocked',
+        code: 'account_inactive',
+        message: 'Your account is inactive'
+      })
+    })
+
+    it('leaves error null when axios error has no mappable code', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 500, data: {} }
+      }
+      vi.mocked(authService.checkAuth).mockRejectedValue(axiosError)
+
+      const store = useAuthStore()
+      await store.initAuth()
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(store.error).toBeNull()
     })
 
     it('sets isLoading to true during check', async () => {

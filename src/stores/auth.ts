@@ -8,8 +8,9 @@
  * @see ADR-006 Token refresh strategy (60s buffer)
  */
 
+import axios from 'axios'
 import { defineStore } from 'pinia'
-import { authService, AuthConfigurationError } from '../services/auth'
+import { authService, AuthConfigurationError, parseAuthError } from '../services/auth'
 import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
 import { decodeAccessToken } from '../utils/jwt'
@@ -189,12 +190,23 @@ export const useAuthStore = defineStore('auth', {
         this.isAuthenticated = false
         this.user = null
 
-        // Handle configuration errors - set appropriate error state
+        // Route known errors into the recovery-category model:
+        // 1. AuthConfigurationError → service_unavailable (misconfig shouldn't
+        //    look like a transient outage, but we surface it via the same
+        //    overlay to avoid a blank screen).
+        // 2. Axios errors carrying a mapped backend code (e.g. account_inactive
+        //    → account_blocked) flow through parseAuthError so consumers see
+        //    the correct terminal view instead of a redirect-loop fallback.
         if (error instanceof AuthConfigurationError) {
           this.setError({
             type: 'service_unavailable',
             message: error.message
           })
+        } else if (axios.isAxiosError(error)) {
+          const authError = parseAuthError(error, getGlobalConfig()?.errorCodeOverrides)
+          if (authError) {
+            this.setError(authError)
+          }
         }
       } finally {
         this.isLoading = false

@@ -64,6 +64,7 @@ A complete end-to-end wire-up. All four steps are usually needed in a typical SP
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { bffAuthPlugin } from '@turnkeystaffing/get-native-vue-auth'
+import '@turnkeystaffing/get-native-vue-auth/styles.css' // required — ships the overlay CSS
 import App from './App.vue'
 
 const app = createApp(App)
@@ -76,6 +77,8 @@ app.use(bffAuthPlugin, {
 
 app.mount('#app')
 ```
+
+> **The CSS import is mandatory.** The overlay and all five default views ship their styles in a separate stylesheet — skip the import and the components will render unstyled.
 
 ### 2. Protect routes
 
