@@ -37,7 +37,7 @@ get-native-vue-auth/
 │   │   └── loginCircuitBreaker.ts   # sessionStorage-backed redirect loop breaker (3 attempts / 2 min)
 │   │
 │   ├── types/
-│   │   ├── auth.ts                  # UserInfo, AuthError, AuthErrorType (5 categories), tokens, 2FA
+│   │   ├── auth.ts                  # UserInfo, AuthError, AuthErrorType (6 categories), tokens, 2FA
 │   │   ├── config.ts                # BffAuthPluginOptions, BffAuthConfig, per-view props contracts
 │   │   └── index.ts                 # Re-export barrel
 │   │
@@ -101,10 +101,10 @@ get-native-vue-auth/
 |---|---|---|
 | `src/services/` | BFF client, interceptors, canonical error-code map | Yes — any backend error-code addition lands here first (`errorCodeMap.ts`). |
 | `src/stores/auth.ts` | Pinia state machine driving auth + overlay. Owns `setError()` semantics (clears identity on `session_expired`/`account_blocked`). | Yes — state-clear rules must match view recovery CTAs. |
-| `src/components/AuthErrorBoundary.vue` + `views/` | Zero-framework overlay — five recovery views + shared overlay.css. | Yes — accessibility (focus trap, scroll lock, aria) and public view-props contracts live here. |
+| `src/components/AuthErrorBoundary.vue` + `views/` | Zero-framework overlay — six recovery views + shared overlay.css. | Yes — accessibility (focus trap, scroll lock, aria) and public view-props contracts live here. |
 | `src/router/guards.ts` | Navigation guard + login redirect with circuit breaker integration. | Low — stable since 1.8.x. |
 | `src/utils/loginCircuitBreaker.ts` | Prevents infinite `/bff/login` ↔ `/bff/userinfo` loops via sessionStorage (3 attempts / 2 min). | Low. |
-| `src/types/` | Public types — especially `AuthErrorType` (5 categories), `BffAuthPluginOptions`, per-view props. | Yes — any type change is a consumer-breaking API change. |
+| `src/types/` | Public types — especially `AuthErrorType` (6 categories), `BffAuthPluginOptions`, per-view props. | Yes — any type change is a consumer-breaking API change. |
 | `src/index.ts` | Public barrel; anything NOT re-exported here is not part of the library's contract. | Yes — exports define the public API. |
 
 ---

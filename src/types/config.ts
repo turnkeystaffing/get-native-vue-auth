@@ -38,6 +38,8 @@ export interface AuthIcons {
   accountBlocked: Component | false
   /** Icon for server-error view title (false to disable) */
   serverError: Component | false
+  /** Icon for permission-denied view title (false to disable) */
+  permissionDenied: Component | false
   /** Icon for "Sign out" CTA on terminal views (false to disable) */
   signOut: Component | false
 }
@@ -74,6 +76,11 @@ export interface AuthText {
     signOut?: string
   }
   serverError?: {
+    title?: string
+    message?: string
+    dismissButton?: string
+  }
+  permissionDenied?: {
     title?: string
     message?: string
     dismissButton?: string
@@ -139,6 +146,22 @@ export interface ServerErrorViewProps {
 }
 
 /**
+ * Props passed to a consumer-provided replacement for the default
+ * permission-denied view. Per-request authorization denial — the user is
+ * authenticated but cannot perform this specific action (e.g., cross-user
+ * access). Renders a Dismiss action that calls `authStore.clearError()`
+ * via the `dismiss` event.
+ *
+ * Events:
+ * - `dismiss` — consumer requests overlay close; `AuthErrorBoundary`
+ *   listens and calls `authStore.clearError()`.
+ */
+export interface PermissionDeniedViewProps {
+  error: AuthError
+  config: BffAuthConfig
+}
+
+/**
  * Escape-hatch: replace the default error views entirely.
  *
  * Props contract (stable public API from v2.0.0):
@@ -147,6 +170,7 @@ export interface ServerErrorViewProps {
  * - `devError` receives {@link DevErrorViewProps}
  * - `accountBlocked` receives {@link AccountBlockedViewProps}
  * - `serverError` receives {@link ServerErrorViewProps}
+ * - `permissionDenied` receives {@link PermissionDeniedViewProps}
  */
 export interface AuthErrorViews {
   sessionExpired?: Component
@@ -154,6 +178,7 @@ export interface AuthErrorViews {
   devError?: Component
   accountBlocked?: Component
   serverError?: Component
+  permissionDenied?: Component
 }
 
 /**

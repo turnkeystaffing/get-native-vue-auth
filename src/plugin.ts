@@ -29,6 +29,10 @@ import IconSessionExpired from './components/icons/IconSessionExpired.vue'
 import IconLogin from './components/icons/IconLogin.vue'
 import IconServiceUnavailable from './components/icons/IconServiceUnavailable.vue'
 import IconRetry from './components/icons/IconRetry.vue'
+import IconPermissionDenied from './components/icons/IconPermissionDenied.vue'
+import IconDevError from './components/icons/IconDevError.vue'
+import IconAccountBlocked from './components/icons/IconAccountBlocked.vue'
+import IconServerError from './components/icons/IconServerError.vue'
 
 /**
  * Default icons (bundled FluentUI SVG components).
@@ -36,9 +40,14 @@ import IconRetry from './components/icons/IconRetry.vue'
  * Consumers can override any/all via the `icons` plugin option, or set to
  * `false` to disable a specific icon.
  *
- * The three new categories (`devError`, `accountBlocked`, `serverError`) reuse
- * `IconServiceUnavailable` by default since these are "something's not right"
- * states; consumers that want category-specific artwork should override.
+ * Each recovery category has its own bundled glyph:
+ * - `sessionExpired` → clock
+ * - `serviceUnavailable` → cloud-off
+ * - `devError` → wrench (developer needs to fix)
+ * - `accountBlocked` → person-prohibited (account/user issue)
+ * - `serverError` → warning triangle (infra failure)
+ * - `permissionDenied` → padlock (per-request authorization denial)
+ *
  * `signOut` reuses `IconLogin` — it's a directional-door icon that reads
  * symmetrically for sign-in and sign-out.
  */
@@ -47,9 +56,10 @@ export const DEFAULT_ICONS: AuthIcons = {
   login: IconLogin,
   serviceUnavailable: IconServiceUnavailable,
   retry: IconRetry,
-  devError: IconServiceUnavailable,
-  accountBlocked: IconServiceUnavailable,
-  serverError: IconServiceUnavailable,
+  devError: IconDevError,
+  accountBlocked: IconAccountBlocked,
+  serverError: IconServerError,
+  permissionDenied: IconPermissionDenied,
   signOut: IconLogin
 }
 

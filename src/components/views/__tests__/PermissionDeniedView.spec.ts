@@ -1,14 +1,15 @@
 /**
- * ServerErrorView Unit Tests
+ * PermissionDeniedView Unit Tests
  *
- * Covers rendering and the Dismiss button — the only CTA since
- * `AuthError` no longer carries auxiliary fields.
+ * Covers rendering and the Dismiss button — the only CTA, since this is a
+ * terminal per-request authorization denial (the user is authenticated, so
+ * no Sign-in / Sign-out path is offered).
  */
 
 import { describe, it, expect, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
-import ServerErrorView from '../ServerErrorView.vue'
+import PermissionDeniedView from '../PermissionDeniedView.vue'
 import type { BffAuthConfig } from '../../../types/config'
 import type { AuthError } from '../../../types/auth'
 
@@ -40,65 +41,64 @@ function makeConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
   }
 }
 
-const serverError: AuthError = {
-  type: 'server_error',
-  message: 'Internal server error',
-  code: 'internal_error'
+const permissionDeniedError: AuthError = {
+  type: 'permission_denied',
+  message: 'Cross-user action denied',
+  code: 'forbidden'
 }
 
-describe('ServerErrorView', () => {
+describe('PermissionDeniedView', () => {
   it('renders title and message', () => {
-    const wrapper = mount(ServerErrorView, {
+    const wrapper = mount(PermissionDeniedView, {
       props: {
-        error: serverError,
+        error: permissionDeniedError,
         config: makeConfig()
       }
     })
 
-    expect(wrapper.text()).toContain('Something went wrong')
-    expect(wrapper.text()).toContain('Internal server error')
-    // Always renders a Dismiss button as the primary CTA.
-    expect(wrapper.find('[data-testid="server-error-dismiss-button"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Permission denied')
+    expect(wrapper.text()).toContain('Cross-user action denied')
+    expect(wrapper.find('[data-testid="permission-denied-dismiss-button"]').exists()).toBe(true)
   })
 
   it('emits `dismiss` when Dismiss is clicked', async () => {
-    const wrapper = mount(ServerErrorView, {
+    const wrapper = mount(PermissionDeniedView, {
       props: {
-        error: serverError,
+        error: permissionDeniedError,
         config: makeConfig()
       }
     })
 
-    await wrapper.get('[data-testid="server-error-dismiss-button"]').trigger('click')
+    await wrapper.get('[data-testid="permission-denied-dismiss-button"]').trigger('click')
 
     expect(wrapper.emitted('dismiss')).toHaveLength(1)
   })
 
   it('applies text overrides', () => {
-    const wrapper = mount(ServerErrorView, {
+    const wrapper = mount(PermissionDeniedView, {
       props: {
-        error: serverError,
+        error: permissionDeniedError,
         config: makeConfig({
           text: {
-            serverError: {
-              title: 'Ouch',
-              message: 'Please try later',
-              dismissButton: 'Close'
+            permissionDenied: {
+              title: 'Not allowed',
+              message: 'Ask your admin',
+              dismissButton: 'OK'
             }
           }
         })
       }
     })
 
-    expect(wrapper.text()).toContain('Ouch')
-    expect(wrapper.text()).toContain('Please try later')
-    expect(wrapper.get('[data-testid="server-error-dismiss-button"]').text()).toContain('Close')
+    expect(wrapper.text()).toContain('Not allowed')
+    expect(wrapper.text()).toContain('Ask your admin')
+    expect(wrapper.get('[data-testid="permission-denied-dismiss-button"]').text()).toContain('OK')
   })
 
   it('has alertdialog role with matching aria ids', () => {
-    const wrapper = mount(ServerErrorView, {
+    const wrapper = mount(PermissionDeniedView, {
       props: {
-        error: serverError,
+        error: permissionDeniedError,
         config: makeConfig()
       }
     })

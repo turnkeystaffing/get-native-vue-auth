@@ -30,7 +30,7 @@
 - [Project Overview](./project-overview.md) — purpose, public API summary, recovery categories
 - [Architecture](./architecture.md) — layers, module responsibilities, data flow, auth modes, security notes, stable API surface
 - [Source Tree Analysis](./source-tree-analysis.md) — annotated tree, entry points, module relationships
-- [Component Inventory](./component-inventory.md) — `AuthErrorBoundary`, five recovery views, bundled icons, theming tokens
+- [Component Inventory](./component-inventory.md) — `AuthErrorBoundary`, six recovery views, bundled icons, theming tokens
 - [State Management](./state-management.md) — Pinia `auth` store — state, getters, actions, transitions, setError semantics
 - [API Contracts](./api-contracts.md) — BFF endpoints, request/response schemas, error-code → category routing
 - [Development Guide](./development-guide.md) — prerequisites, yarn scripts, demo app, testing, release workflow

@@ -132,11 +132,12 @@ Full table in [error-handling-analysis.md](./error-handling-analysis.md). Summar
 
 | `AuthErrorType` | Canonical codes |
 |---|---|
-| `session_expired` | `invalid_grant`, `missing_token`, `invalid_token`, `invalid_user_id`, `user_not_found`, `missing_refresh_token`, `invalid_refresh_token`, `reauth_required`, `session_compromised`, `forbidden`, `invalid_session`, `authentication_error` |
+| `session_expired` | `invalid_grant`, `missing_token`, `invalid_token`, `invalid_user_id`, `user_not_found`, `missing_refresh_token`, `invalid_refresh_token`, `reauth_required`, `session_compromised`, `invalid_session`, `authentication_error` |
 | `service_unavailable` | `temporarily_unavailable`, `service_unavailable`, `auth_service_unavailable`, `logout_failed`, `sessions_fetch_failed`, `revoke_failed`, `password_change_error`, `resend_email_failed`, `resend_email_error`, `2fa_setup_error`, `2fa_verify_error`, `rate_limit_exceeded` |
 | `dev_error` | `invalid_client`, `unauthorized_client`, `unsupported_response_type`, `unsupported_grant_type`, `invalid_scope`, `invalid_redirect_uri`, `client_inactive`, `cors_error` |
 | `account_blocked` | `account_inactive`, `insufficient_permissions` |
 | `server_error` | `server_error`, `internal_error`, `not_implemented`, `unknown_host` |
+| `permission_denied` | `forbidden` |
 
 **`KNOWN_INLINE_CODES`** — codes the interceptor stays silent for (caller renders inline): passwords (`missing_current_password`, `invalid_current_password`, `weak_password`, …), 2FA/TOTP (`missing_totp_code`, `invalid_totp_code`, `invalid_setup_token`, `2fa_already_enabled`, …), login form (`invalid_credentials`), email management (`email_not_found`, `email_exists`, `email_not_verified`, `cannot_remove_primary`, …), session UI (`missing_session_id`, `session_not_found`, …), consent (`invalid_request`, `access_denied`), security middleware (`payload_too_large`).
 

@@ -8,9 +8,9 @@
 `@turnkeystaffing/get-native-vue-auth` is a single-entry Vue 3 plugin library that encapsulates everything a Turnkey product SPA needs to integrate with the BFF (Backend-for-Frontend) authentication service:
 
 1. **Auth state management** — a Pinia store with lazy token refresh and concurrent-refresh deduplication.
-2. **HTTP integration** — Axios interceptors that inject `Authorization: Bearer` tokens and route backend error codes into five recovery categories.
+2. **HTTP integration** — Axios interceptors that inject `Authorization: Bearer` tokens and route backend error codes into six recovery categories.
 3. **Routing** — Vue Router navigation guard that redirects unauthenticated users to Central Login, with a circuit breaker to short-circuit redirect loops.
-4. **Presentation layer** — a zero-framework `AuthErrorBoundary` component with five default views (`session_expired`, `service_unavailable`, `dev_error`, `account_blocked`, `server_error`), each consumer-replaceable, theme-able via CSS custom properties, and bundled with FluentUI SVG icons.
+4. **Presentation layer** — a zero-framework `AuthErrorBoundary` component with six default views (`session_expired`, `service_unavailable`, `dev_error`, `account_blocked`, `server_error`, `permission_denied`), each consumer-replaceable, theme-able via CSS custom properties, and bundled with FluentUI SVG icons.
 
 The v2.0.0 release replaced the v1.x Vuetify-dependent UI (`SessionExpiredModal`, `PermissionDeniedToast`, `ServiceUnavailableOverlay`) with a single overlay component that has **no UI-framework peer dependency**.
 
@@ -50,7 +50,7 @@ The v2.0.0 release replaced the v1.x Vuetify-dependent UI (`SessionExpiredModal`
 | **Interceptors** | Axios request/response middleware; drift hook | `services/interceptors.ts` |
 | **Router integration** | Nav-guard factory + login-redirect circuit breaker | `router/guards.ts`, `utils/loginCircuitBreaker.ts` |
 | **Composition** | Component-friendly reactive wrapper | `composables/useAuth.ts` |
-| **Presentation** | Teleported overlay with five views, bundled icons, CSS vars | `components/AuthErrorBoundary.vue`, `components/views/*` |
+| **Presentation** | Teleported overlay with six views, bundled icons, CSS vars | `components/AuthErrorBoundary.vue`, `components/views/*` |
 
 Consumers opt into each layer independently — they can adopt just the store + interceptors without mounting `AuthErrorBoundary`, or vice versa.
 
@@ -145,13 +145,13 @@ Factory `createAuthGuard(deps?)` returns a `NavigationGuard`. **Closure-scoped `
 Reactive-wrapping composable: `computed()` accessors for state (`isAuthenticated`, `user`, `userEmail`, `userRoles`, `decodedToken`, …) plus thin method pass-throughs (`login`, `logout`, `clearError`, `hasRole`). Used in components to avoid importing Pinia directly.
 
 ### `components/AuthErrorBoundary.vue`
-- Watches `error.value?.type` and maps to one of five views; consumer `errorViews.<type>` overrides take precedence over bundled views.
+- Watches `error.value?.type` and maps to one of six views; consumer `errorViews.<type>` overrides take precedence over bundled views.
 - Pass-through props are **per-view type-safe** (distinct `SessionExpiredViewProps`, `ServiceUnavailableViewProps`, etc.). Every view receives `{ error, config }`; interactive views also receive `onSignIn` / `onRetry` / `onSignOut`; `ServerErrorView` emits `dismiss` (bound to `authStore.clearError`).
 - **Accessibility**: Teleports to `<body>`; captures previously-focused element; locks body scroll; traps Tab/Shift+Tab within overlay; focuses `primaryAction` exposed by each view on mount AND on error-type change; restores focus on close. Uses `role="alertdialog"` + `aria-modal="true"` + `aria-live="assertive"` at each view root.
 - **Sign-in** handler applies the login circuit breaker itself (in addition to the guard) so the session-expired view can't infinite-loop the redirect.
 - **Service-unavailable retry** calls `authStore.initAuth()`, clears error on success, and escalates to `session_expired` if the backend responds OK but identity is still missing.
 
-### `components/views/*` — five recovery views
+### `components/views/*` — six recovery views
 Each view:
 - Declares props typed against the corresponding `*ViewProps` from `types/config.ts`.
 - Pulls title / message / button labels from `config.text.<type>?.*` with bundled English defaults.
@@ -168,15 +168,16 @@ Distinctive behaviors:
 
 ## Data Flow & Recovery Categories
 
-Five recovery categories end-to-end:
+Six recovery categories end-to-end:
 
 | Category | Triggers (codes / fallback) | View | CTA → Side effect | Clears identity? |
 |---|---|---|---|---|
-| `session_expired` | `invalid_grant`, `missing_token`, `invalid_token`, `invalid_user_id`, `user_not_found`, `missing_refresh_token`, `invalid_refresh_token`, `reauth_required`, `session_compromised`, `forbidden`, `invalid_session`, `authentication_error` + bare **401** fallback + empty/invalid token response | `SessionExpiredView` | Sign in → `authStore.login()` (full-page redirect, circuit-breaker guarded) | ✅ |
+| `session_expired` | `invalid_grant`, `missing_token`, `invalid_token`, `invalid_user_id`, `user_not_found`, `missing_refresh_token`, `invalid_refresh_token`, `reauth_required`, `session_compromised`, `invalid_session`, `authentication_error` + bare **401** fallback + empty/invalid token response | `SessionExpiredView` | Sign in → `authStore.login()` (full-page redirect, circuit-breaker guarded) | ✅ |
 | `service_unavailable` | `temporarily_unavailable`, `service_unavailable`, `auth_service_unavailable`, `logout_failed`, `sessions_fetch_failed`, `revoke_failed`, `password_change_error`, `resend_email_{failed,error}`, `2fa_{setup,verify}_error`, `rate_limit_exceeded` + bare **429** fallback + `AuthConfigurationError` | `ServiceUnavailableView` | 30s auto-retry or Try Now → `authStore.initAuth()` | ❌ |
 | `dev_error` | `invalid_client`, `unauthorized_client`, `unsupported_response_type`, `unsupported_grant_type`, `invalid_scope`, `invalid_redirect_uri`, `client_inactive`, `cors_error` | `DevErrorView` | Sign out → `authStore.logout()` | ❌ |
 | `account_blocked` | `account_inactive`, `insufficient_permissions` | `AccountBlockedView` (branched copy) | Sign out → `authStore.logout()` | ✅ |
 | `server_error` | `server_error`, `internal_error`, `not_implemented`, `unknown_host` | `ServerErrorView` | Dismiss → `authStore.clearError()` | ❌ |
+| `permission_denied` | `forbidden` | `PermissionDeniedView` | Dismiss → `authStore.clearError()` | ❌ |
 
 **Inline / silent codes** (`KNOWN_INLINE_CODES`) — the interceptor does NOT call `setError` for these; they propagate as rejections for the caller to render inline: password fields, 2FA/TOTP fields, login form, email management, session management UI, consent (`invalid_request`, `access_denied`), payload size.
 

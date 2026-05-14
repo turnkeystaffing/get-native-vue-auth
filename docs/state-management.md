@@ -113,6 +113,7 @@ setError(error: AuthError) {
 | `service_unavailable` | ❌ | Transient — identity is still valid; retry should pick up where it left off. |
 | `dev_error` | ❌ | App is broken, but the user IS who they say they are. Telemetry should keep user context. |
 | `server_error` | ❌ | Same rationale as `dev_error` — preserve context for bug reports. |
+| `permission_denied` | ❌ | Per-request denial; the user is authenticated and may still successfully do other things. |
 
 ### `clearError()`
 `this.error = null` — no identity side effects. Called by `ServerErrorView`'s dismiss flow and by `AuthErrorBoundary`'s successful retry path.

@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Vue 3 plugin library providing a turnkey BFF-authentication integration for Turnkey product SPAs: Pinia store, Axios interceptors, Vue Router guard, login-redirect circuit breaker, JWT utilities, and a zero-dependency overlay component with five error-recovery views. Plug it into `app.use(bffAuthPlugin, { bffBaseUrl, clientId })`, attach `setupAuthInterceptors` to your Axios client, call `setupAuthGuard(router)`, and drop `<AuthErrorBoundary/>` into your root layout.
+Vue 3 plugin library providing a turnkey BFF-authentication integration for Turnkey product SPAs: Pinia store, Axios interceptors, Vue Router guard, login-redirect circuit breaker, JWT utilities, and a zero-dependency overlay component with six error-recovery views. Plug it into `app.use(bffAuthPlugin, { bffBaseUrl, clientId })`, attach `setupAuthInterceptors` to your Axios client, call `setupAuthGuard(router)`, and drop `<AuthErrorBoundary/>` into your root layout.
 
 ## Quick Reference
 
@@ -45,7 +45,7 @@ No in-repo CI (`.github/workflows/` absent) — release automation lives outside
 
 ## Recovery Categories
 
-`AuthErrorType` has five values, each mapped to a dedicated bundled view:
+`AuthErrorType` has six values, each mapped to a dedicated bundled view:
 
 | Category | When it triggers | User action | Identity cleared |
 |---|---|---|---|
@@ -54,6 +54,7 @@ No in-repo CI (`.github/workflows/` absent) — release automation lives outside
 | `dev_error` | OAuth client misconfigured | Sign out (app is broken) | ❌ |
 | `account_blocked` | Account disabled or insufficient permissions | Sign out | ✅ |
 | `server_error` | Unhandled server/infra failure | Dismiss overlay | ❌ |
+| `permission_denied` | Per-request 403 `forbidden` — authenticated but lacks permission for this action | Dismiss overlay | ❌ |
 
 Backend codes are routed through `ERROR_CODE_TO_TYPE`; consumers can extend via `errorCodeOverrides` and instrument drift via `onUnmappedError`. See [error-handling-analysis.md](./error-handling-analysis.md) and [auth-error-codes.md](./auth-error-codes.md) for the full table.
 

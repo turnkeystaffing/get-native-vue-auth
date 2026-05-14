@@ -39,7 +39,7 @@ export interface TokenResponse {
 }
 
 /**
- * Auth error types — five recovery categories.
+ * Auth error types — six recovery categories.
  *
  * Each type corresponds to a distinct user-recovery UX:
  * - `session_expired`: re-authenticate (clears auth state)
@@ -47,6 +47,7 @@ export interface TokenResponse {
  * - `dev_error`: OAuth client misconfiguration — terminal; "Contact developer" CTA (does not clear auth)
  * - `account_blocked`: account disabled or insufficient permissions — terminal; "Sign out" CTA (clears auth)
  * - `server_error`: unhandled server/infra failure — terminal; shows `request_id` for support (does not clear auth)
+ * - `permission_denied`: per-request authorization denial (cross-user / missing role) — terminal; "Dismiss" CTA (does not clear auth)
  *
  * Routing is driven by a lowercased error-code table (`ERROR_CODE_TO_TYPE`) with
  * HTTP-status fallbacks when the code is absent.
@@ -59,6 +60,7 @@ export type AuthErrorType =
   | 'dev_error'
   | 'account_blocked'
   | 'server_error'
+  | 'permission_denied'
 
 /**
  * Auth error structure for frontend error handling.

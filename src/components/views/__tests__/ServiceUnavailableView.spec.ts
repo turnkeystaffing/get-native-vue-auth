@@ -31,6 +31,7 @@ function makeConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
       devError: IconStub,
       accountBlocked: IconStub,
       serverError: IconStub,
+      permissionDenied: IconStub,
       signOut: IconStub
     },
     errorViews: {},

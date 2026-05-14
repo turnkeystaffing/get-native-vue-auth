@@ -10,6 +10,7 @@ import ServiceUnavailableView from './views/ServiceUnavailableView.vue'
 import DevErrorView from './views/DevErrorView.vue'
 import AccountBlockedView from './views/AccountBlockedView.vue'
 import ServerErrorView from './views/ServerErrorView.vue'
+import PermissionDeniedView from './views/PermissionDeniedView.vue'
 
 defineOptions({ name: 'AuthErrorBoundary' })
 
@@ -38,6 +39,9 @@ const activeView = computed<Component | null>(() => {
   }
   if (type === 'server_error') {
     return config.errorViews.serverError ?? ServerErrorView
+  }
+  if (type === 'permission_denied') {
+    return config.errorViews.permissionDenied ?? PermissionDeniedView
   }
   return null
 })
@@ -80,6 +84,12 @@ const viewProps = computed(() => {
       config
     }
   }
+  if (currentError.type === 'permission_denied') {
+    return {
+      error: currentError,
+      config
+    }
+  }
   return null
 })
 
@@ -117,7 +127,7 @@ async function handleSignOut() {
 }
 
 function handleDismiss() {
-  logger.info('User dismissed server_error overlay')
+  logger.info('User dismissed error overlay', { type: error.value?.type })
   authStore.clearError()
 }
 

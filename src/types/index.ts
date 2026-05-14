@@ -32,6 +32,7 @@ export type {
   DevErrorViewProps,
   AccountBlockedViewProps,
   ServerErrorViewProps,
+  PermissionDeniedViewProps,
   UnmappedErrorHook,
   AuthMode
 } from './config'

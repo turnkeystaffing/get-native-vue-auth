@@ -9,7 +9,7 @@ A Vue 3 plugin for BFF (Backend-for-Frontend) authentication. Ships a Pinia stat
 ## At a glance
 
 - **Pinia auth store** with lazy token refresh and concurrent-refresh deduplication.
-- **Axios interceptors** that inject `Authorization: Bearer` headers and route backend error codes into five recovery categories.
+- **Axios interceptors** that inject `Authorization: Bearer` headers and route backend error codes into six recovery categories.
 - **Vue Router nav guard** with a circuit breaker that prevents infinite login redirects.
 - **`<AuthErrorBoundary />`** — a single Teleported overlay with five built-in recovery views, bundled FluentUI SVG icons, and full theme/copy/view overrides.
 - **Two auth modes** — `token` (default, manages JWTs) and `cookie` (BFF session cookies, no token operations).
@@ -78,7 +78,7 @@ app.use(bffAuthPlugin, {
 app.mount('#app')
 ```
 
-> **The CSS import is mandatory.** The overlay and all five default views ship their styles in a separate stylesheet — skip the import and the components will render unstyled.
+> **The CSS import is mandatory.** The overlay and all six default views ship their styles in a separate stylesheet — skip the import and the components will render unstyled.
 
 ### 2. Protect routes
 
@@ -155,9 +155,9 @@ app.use(bffAuthPlugin, {
 
 For the full behavior matrix — which getters return `null`, which interceptor paths short-circuit — see [`docs/architecture.md`](./docs/architecture.md).
 
-### The five recovery categories
+### The six recovery categories
 
-When an auth error occurs, the plugin maps it to one of five categories. `AuthErrorBoundary` renders a view per category:
+When an auth error occurs, the plugin maps it to one of six categories. `AuthErrorBoundary` renders a view per category:
 
 | Category | Default view | Typical cause |
 |---|---|---|
@@ -166,6 +166,7 @@ When an auth error occurs, the plugin maps it to one of five categories. `AuthEr
 | `dev_error` | Error code + sign-out CTA | OAuth misconfig, invalid client — app is unusable until fixed. |
 | `account_blocked` | Sign-out CTA | `account_inactive` or `insufficient_permissions`. |
 | `server_error` | Dismissible message | Unexpected 5xx without a mapped code. |
+| `permission_denied` | Dismissible message | Per-request 403 `forbidden` — user is authenticated but lacks permission for this action. |
 
 Each backend code is mapped in [`docs/auth-error-codes.md`](./docs/auth-error-codes.md). You can re-route or silence codes per-app — see [`docs/theming.md#error-code-overrides`](./docs/theming.md#error-code-overrides).
 
@@ -299,7 +300,7 @@ The main runtime exports, grouped. The complete, always-up-to-date list — incl
 | [Architecture](./docs/architecture.md) | Understand the layered design, module responsibilities, auth modes, and security model. |
 | [State management](./docs/state-management.md) | Know exactly what the Pinia store tracks and how transitions work. |
 | [API contracts](./docs/api-contracts.md) | Look up BFF endpoints, request/response schemas, and error-code routing. |
-| [Component inventory](./docs/component-inventory.md) | Understand `AuthErrorBoundary`'s five views and their prop contracts. |
+| [Component inventory](./docs/component-inventory.md) | Understand `AuthErrorBoundary`'s six views and their prop contracts. |
 | [Auth error codes](./docs/auth-error-codes.md) | See the canonical backend code catalog and recovery-category mapping. |
 | [Theming & customization](./docs/theming.md) | Theme the overlay, swap icons, override copy, or replace views. |
 | [Development guide](./docs/development-guide.md) | Build, test, or release the library. |

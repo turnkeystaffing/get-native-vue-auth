@@ -5,7 +5,7 @@
 1. **[Theme via CSS custom properties](#theme-via-css-custom-properties)** — change colors, typography, sizing without touching JS.
 2. **[Swap icons](#swap-icons)** — provide your own Vue icon components, or hide icons entirely.
 3. **[Override copy](#override-copy)** — replace the built-in English strings per state.
-4. **[Full view replacement](#full-view-replacement)** — drop in your own Vue components for any of the five recovery states.
+4. **[Full view replacement](#full-view-replacement)** — drop in your own Vue components for any of the six recovery states.
 
 You can mix levels freely — e.g., use the default view but with your brand colors and your own icons.
 

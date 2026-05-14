@@ -62,6 +62,7 @@ function makeMockConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
       devError: false,
       accountBlocked: false,
       serverError: false,
+      permissionDenied: false,
       signOut: false
     },
     errorViews: {},
@@ -201,7 +202,6 @@ describe('Auth Interceptors', () => {
       { code: 'INVALID_REFRESH_TOKEN', status: 401, expectedType: 'session_expired' },
       { code: 'REAUTH_REQUIRED', status: 403, expectedType: 'session_expired' },
       { code: 'SESSION_COMPROMISED', status: 403, expectedType: 'session_expired' },
-      { code: 'forbidden', status: 403, expectedType: 'session_expired' },
       { code: 'invalid_session', status: 401, expectedType: 'session_expired' },
       { code: 'authentication_error', status: 401, expectedType: 'session_expired' },
 
@@ -227,7 +227,10 @@ describe('Auth Interceptors', () => {
       { code: 'server_error', status: 500, expectedType: 'server_error' },
       { code: 'INTERNAL_ERROR', status: 500, expectedType: 'server_error' },
       { code: 'NOT_IMPLEMENTED', status: 501, expectedType: 'server_error' },
-      { code: 'unknown_host', status: 403, expectedType: 'server_error' }
+      { code: 'unknown_host', status: 403, expectedType: 'server_error' },
+
+      // permission_denied
+      { code: 'forbidden', status: 403, expectedType: 'permission_denied' }
     ]
 
     for (const { code, status, expectedType } of cases) {

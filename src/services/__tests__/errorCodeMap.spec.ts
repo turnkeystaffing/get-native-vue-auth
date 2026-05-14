@@ -28,7 +28,6 @@ describe('ERROR_CODE_TO_TYPE', () => {
     ['invalid_refresh_token', 'session_expired'],
     ['reauth_required', 'session_expired'],
     ['session_compromised', 'session_expired'],
-    ['forbidden', 'session_expired'],
     ['invalid_session', 'session_expired'],
     ['authentication_error', 'session_expired'],
 
@@ -60,7 +59,9 @@ describe('ERROR_CODE_TO_TYPE', () => {
     ['server_error', 'server_error'],
     ['internal_error', 'server_error'],
     ['not_implemented', 'server_error'],
-    ['unknown_host', 'server_error']
+    ['unknown_host', 'server_error'],
+
+    ['forbidden', 'permission_denied']
   ]
 
   for (const [code, expected] of tableTests) {

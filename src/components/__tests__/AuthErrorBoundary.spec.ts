@@ -58,6 +58,7 @@ function installConfig(overrides: Partial<BffAuthConfig> = {}) {
       devError: IconStub,
       accountBlocked: IconStub,
       serverError: IconStub,
+      permissionDenied: IconStub,
       signOut: IconStub
     },
     errorViews: {},
@@ -124,6 +125,19 @@ describe('AuthErrorBoundary', () => {
     await nextTick()
 
     expect(document.querySelector('[data-testid="server-error-view"]')).not.toBeNull()
+  })
+
+  it('renders PermissionDeniedView when error.type is permission_denied', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    store.setError({
+      type: 'permission_denied',
+      message: 'Cross-user action denied',
+      code: 'forbidden'
+    })
+    await nextTick()
+
+    expect(document.querySelector('[data-testid="permission-denied-view"]')).not.toBeNull()
   })
 
   it('renders SessionExpiredView via Teleport when error.type is session_expired', async () => {

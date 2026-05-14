@@ -54,7 +54,7 @@ Sources: `pkg/httputil/oauth_errors.go` (RFC 6749), `internal/auth/gateway/share
 | `INVALID_SESSION_ID`    | 400  | USER           | session_id not a UUID                                     |
 | `SESSION_NOT_FOUND`     | 404  | USER           | Already revoked / unknown id                              |
 | `REVOKE_FAILED`         | 500  | WAIT           | Session revocation DB error                               |
-| `FORBIDDEN`             | 403  | AUTH           | Cross-user action denied                                  |
+| `FORBIDDEN`             | 403  | USER           | Cross-user action denied → `permission_denied` overlay (Dismiss)  |
 | `INTERNAL_ERROR`        | 500  | ADMIN          | Unexpected state (e.g., missing auth context)             |
 | `NOT_IMPLEMENTED`       | 501  | ADMIN          | Endpoint disabled                                         |
 | `SERVICE_UNAVAILABLE`   | 503  | WAIT           | Dependency down                                           |

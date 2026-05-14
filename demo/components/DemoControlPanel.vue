@@ -71,6 +71,24 @@ function triggerServerError() {
   })
 }
 
+function triggerForbidden403() {
+  // 403 with the `forbidden` code routes to permission_denied — per-request
+  // authorization denial (cross-user / missing role). Auth stays intact.
+  authStore.setError({
+    type: 'permission_denied',
+    message: 'You do not have permission to access this resource.',
+    code: 'forbidden'
+  })
+}
+
+function triggerNaked403() {
+  // Naked 403 (no `error` field in body) is intentionally NOT overlaid —
+  // statusFallbackType(403) returns null, so the rejection propagates silently.
+  // See interceptors.ts:226.
+  lastDriftLog.value = 'Naked 403 — no overlay rendered (interceptors.ts:226)'
+  console.info('[demo] simulated naked 403', { status: 403, body: {} })
+}
+
 function triggerUnmappedCode() {
   // Simulates an unmapped-403 response in dev mode so consumers can watch the
   // plugin's `onUnmappedError` hook fire + console.warn. The overlay does NOT
@@ -197,6 +215,18 @@ function resetTheme() {
           @click="triggerServerError"
         >
           Server Error
+        </button>
+        <button
+          class="btn btn-muted"
+          @click="triggerForbidden403"
+        >
+          Forbidden 403 (→ permission denied)
+        </button>
+        <button
+          class="btn btn-muted"
+          @click="triggerNaked403"
+        >
+          Naked 403 (no overlay)
         </button>
         <button
           class="btn btn-muted"
