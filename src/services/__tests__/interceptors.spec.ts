@@ -58,6 +58,7 @@ function makeMockConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
       sessionExpired: false,
       login: false,
       serviceUnavailable: false,
+      loginLoop: false,
       retry: false,
       devError: false,
       accountBlocked: false,

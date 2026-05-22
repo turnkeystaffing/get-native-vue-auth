@@ -75,6 +75,7 @@ describe('Auth Guards', () => {
     error: AuthError | null
     initAuth: ReturnType<typeof vi.fn>
     setError: ReturnType<typeof vi.fn>
+    logout: ReturnType<typeof vi.fn>
     $patch: ReturnType<typeof vi.fn>
   }
 
@@ -102,6 +103,7 @@ describe('Auth Guards', () => {
         ? vi.fn(overrides.initAuth)
         : vi.fn().mockResolvedValue(undefined),
       setError: vi.fn(),
+      logout: vi.fn().mockResolvedValue(undefined),
       $patch: vi.fn((patch: { isAuthenticated?: boolean; isLoading?: boolean }) => {
         if (patch.isAuthenticated !== undefined) store.isAuthenticated = patch.isAuthenticated
         if (patch.isLoading !== undefined) store.isLoading = patch.isLoading
@@ -548,8 +550,30 @@ describe('Auth Guards', () => {
       expect(m4.service.login).not.toHaveBeenCalled()
       expect(s4.setError).toHaveBeenCalledWith({
         type: 'service_unavailable',
+        code: 'login_loop_detected',
         message: 'Too many login attempts. Authentication service may be unavailable.'
       })
+    })
+
+    it('forces a clean logout (not another overlay) once the trip ceiling is exceeded', async () => {
+      // Pre-seed a tripped window already at one trip episode; the next attempt
+      // crosses the threshold a second time and exceeds the default ceiling (2).
+      sessionStorage.setItem(
+        'gn-auth-login-circuit-breaker',
+        JSON.stringify({ count: 3, firstAttemptAt: Date.now(), trips: 1 })
+      )
+
+      const { deps, mocks } = createMockDeps({ isAuthenticated: false })
+      mocks.store.setError = vi.fn()
+      router.beforeEach(createAuthGuard(deps))
+
+      await router.push('/protected')
+
+      expect(mocks.service.login).not.toHaveBeenCalled()
+      expect(mocks.store.setError).not.toHaveBeenCalled()
+      expect(mocks.store.logout).toHaveBeenCalledTimes(1)
+      // Breaker is reset before logout so the Central-Login redirect can't re-trip it.
+      expect(sessionStorage.getItem('gn-auth-login-circuit-breaker')).toBeNull()
     })
 
     it('resets circuit breaker when authentication succeeds', async () => {

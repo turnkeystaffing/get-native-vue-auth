@@ -153,10 +153,12 @@ store.setError()
     └── dev_error / server_error / service_unavailable → preserve identity
 
 error.value in <AuthErrorBoundary/>
-    └── picks view by type (session_expired | service_unavailable | dev_error | account_blocked | server_error)
+    └── picks view by type (session_expired | service_unavailable | dev_error | account_blocked | server_error | permission_denied)
+        └── service_unavailable splits on error.code: login_loop_detected → LoginLoopView, else ServiceUnavailableView
         └── uses config.errorViews override, else bundled view + config.icons + config.text
             ├── SessionExpiredView       — onSignIn → authStore.login() (guarded by circuit breaker)
             ├── ServiceUnavailableView   — onRetry → authStore.initAuth(); 30s countdown auto-retries
+            ├── LoginLoopView            — circuit-breaker trip; cooldown-gated onSignIn + onSignOut escape (reset+logout)
             ├── DevErrorView / AccountBlockedView — onSignOut → authStore.logout()
             └── ServerErrorView          — emits `dismiss` → authStore.clearError()
 ```

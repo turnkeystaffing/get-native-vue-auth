@@ -172,9 +172,9 @@ Every transition flows through actions — no component mutates state directly.
 | Consumer | Reads | Writes |
 |---|---|---|
 | `useAuth()` composable | all reactive state + getters | calls actions — `login`, `logout`, `clearError` |
-| `createAuthGuard()` | `isAuthenticated`, `isLoading` | `initAuth()`, `setError` (on `AuthConfigurationError` + circuit-breaker trip) |
+| `createAuthGuard()` | `isAuthenticated`, `isLoading` | `initAuth()`, `setError` (on `AuthConfigurationError` + circuit-breaker trip → `login_loop_detected`); `logout()` past the trip ceiling |
 | `setupAuthInterceptors()` | `isAuthenticated`, `ensureValidToken` | `setError` on any mapped error |
-| `AuthErrorBoundary` | `error` | `setError` (service_unavailable on breaker trip, session_expired on retry-with-no-identity), `login`, `logout`, `clearError` |
+| `AuthErrorBoundary` | `error` | `setError` (`service_unavailable`/`login_loop_detected` on breaker trip, `session_expired` on retry-with-no-identity), `login`, `logout` (incl. login-loop sign-out escape: `resetLoginAttempts()` + `logout()`), `clearError` |
 | Views | none — read via props | none — dispatch via passed-in callbacks |
 
 The `AuthStoreInterface` (exported from `interceptors.ts`) names the exact subset the interceptor needs: `isAuthenticated`, `ensureValidToken`, `setError`. Consumers with custom stores could implement this instead of using Pinia directly — the interceptor does DI via `getAuthStore`.

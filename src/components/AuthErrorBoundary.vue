@@ -4,9 +4,16 @@ import { useAuth } from '../composables/useAuth'
 import { useAuthStore } from '../stores/auth'
 import { getGlobalConfig } from '../config'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
-import { recordLoginAttempt } from '../utils/loginCircuitBreaker'
+import {
+  recordLoginAttempt,
+  resetLoginAttempts,
+  getCircuitBreakerResetAt,
+  hasExceededTripCeiling,
+  LOGIN_LOOP_DETECTED
+} from '../utils/loginCircuitBreaker'
 import SessionExpiredView from './views/SessionExpiredView.vue'
 import ServiceUnavailableView from './views/ServiceUnavailableView.vue'
+import LoginLoopView from './views/LoginLoopView.vue'
 import DevErrorView from './views/DevErrorView.vue'
 import AccountBlockedView from './views/AccountBlockedView.vue'
 import ServerErrorView from './views/ServerErrorView.vue'
@@ -21,6 +28,13 @@ const authStore = useAuthStore()
 const viewRef = ref<{ primaryAction: HTMLElement | null } | null>(null)
 const overlayRoot = ref<HTMLElement | null>(null)
 
+// The login-redirect circuit breaker reports as `service_unavailable` but
+// carries the `login_loop_detected` code so it can be told apart from a genuine
+// server outage / 429 (which keeps the wait-and-retry UX).
+const isLoginLoop = computed(
+  () => error.value?.type === 'service_unavailable' && error.value?.code === LOGIN_LOOP_DETECTED
+)
+
 const activeView = computed<Component | null>(() => {
   const type = error.value?.type
   const config = getGlobalConfig()
@@ -29,6 +43,9 @@ const activeView = computed<Component | null>(() => {
     return config.errorViews.sessionExpired ?? SessionExpiredView
   }
   if (type === 'service_unavailable') {
+    if (isLoginLoop.value) {
+      return config.errorViews.loginLoop ?? LoginLoopView
+    }
     return config.errorViews.serviceUnavailable ?? ServiceUnavailableView
   }
   if (type === 'dev_error') {
@@ -58,6 +75,15 @@ const viewProps = computed(() => {
     }
   }
   if (currentError.type === 'service_unavailable') {
+    if (isLoginLoop.value) {
+      return {
+        error: currentError,
+        onSignIn: handleSignIn,
+        onSignOut: handleLoginLoopSignOut,
+        cooldownEndsAt: getCircuitBreakerResetAt(),
+        config
+      }
+    }
     return {
       error: currentError,
       onRetry: handleRetry,
@@ -93,23 +119,54 @@ const viewProps = computed(() => {
   return null
 })
 
-function handleSignIn() {
+async function handleSignIn() {
   if (!recordLoginAttempt()) {
-    logger.warn('Login redirect circuit breaker tripped from session expired view')
+    // Persistent loop — escalate to a clean logout that clears the stale BFF
+    // session that keeps re-driving the bounce, instead of looping forever.
+    if (hasExceededTripCeiling()) {
+      logger.error('Login loop trip ceiling exceeded; forcing clean logout')
+      await handleLoginLoopSignOut()
+      return
+    }
+
+    // Breaker tripped: surface the cooldown/recovery view rather than swapping
+    // to a dead-end service_unavailable. The login-loop view disables sign-in
+    // until the cooldown elapses and always offers a sign-out escape.
+    logger.warn('Login redirect circuit breaker tripped; showing cooldown')
     authStore.setError({
       type: 'service_unavailable',
-      message: 'Too many login attempts. Authentication service may be unavailable.'
+      code: LOGIN_LOOP_DETECTED,
+      message: 'Too many sign-in attempts. Wait a moment, then try again or sign out.'
     })
     return
   }
 
-  logger.info('User initiated re-authentication from session expired view')
+  logger.info('User initiated re-authentication')
 
   try {
     const returnUrl = window.location.href
     authStore.login(returnUrl)
   } catch (err) {
     logger.error('Failed to initiate login redirect', err)
+  }
+}
+
+/**
+ * Explicit escape from the login-loop view: clear the breaker first so the
+ * forced logout can't immediately re-trip it, then sign out (which revokes the
+ * stale BFF session and lands on a clean Central Login).
+ */
+async function handleLoginLoopSignOut() {
+  logger.info('User initiated sign-out from login-loop view')
+  resetLoginAttempts()
+  try {
+    await authStore.logout()
+  } catch (err) {
+    logger.error('Sign-out failed from login-loop view', err)
+  } finally {
+    // Safety net for test environments where logout doesn't redirect; in real
+    // usage authStore.logout() triggers a full page redirect and this is a noop.
+    authStore.clearError()
   }
 }
 

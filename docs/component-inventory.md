@@ -1,9 +1,9 @@
 # Component Inventory: @turnkeystaffing/get-native-vue-auth
 
-**Version:** 2.0.0
-**Generated:** 2026-04-18
+**Version:** 2.2.0
+**Generated:** 2026-05-22
 
-All components live in `src/components/`. The only publicly exported component is `AuthErrorBoundary`. Views are used internally by the boundary and are NOT exported from `src/index.ts`, but their props types are (`SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `DevErrorViewProps`, `AccountBlockedViewProps`, `ServerErrorViewProps`) so consumers can write type-safe replacements.
+All components live in `src/components/`. The only publicly exported component is `AuthErrorBoundary`. Views are used internally by the boundary and are NOT exported from `src/index.ts`, but their props types are (`SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `LoginLoopViewProps`, `DevErrorViewProps`, `AccountBlockedViewProps`, `ServerErrorViewProps`, `PermissionDeniedViewProps`) so consumers can write type-safe replacements.
 
 ---
 
@@ -24,9 +24,10 @@ All components live in `src/components/`. The only publicly exported component i
   - Scroll lock — `document.body.style.overflow = 'hidden'`.
   - Previously-focused element captured on open, restored on close.
   - `primaryAction` focused on mount AND when `error.type` changes (so auto-retry escalations move focus correctly).
-- **Sign-in flow** — applies `recordLoginAttempt()` itself before calling `authStore.login(window.location.href)`; on trip, flips to `service_unavailable` so the overlay stays in place instead of looping the redirect.
+- **Sign-in flow** — applies `recordLoginAttempt()` itself before calling `authStore.login(window.location.href)`; on trip, sets `service_unavailable` with `code: 'login_loop_detected'` (rendering `LoginLoopView`, not the retry view) so the user gets a cooldown + escape instead of a redirect loop. Past the trip ceiling it escalates to a clean logout.
+- **Login-loop sign-out flow** — `LoginLoopView`'s escape calls `resetLoginAttempts()` then `authStore.logout()` (reset-first so the redirect can't immediately re-trip), clearing both the local breaker and the stale BFF session.
 - **Sign-out flow** — calls `authStore.logout()`; clears error as a safety net for test environments where the redirect doesn't execute.
-- **Retry flow** — calls `authStore.initAuth()`; clears error on successful re-auth; escalates to `session_expired` when the backend responds OK but identity is still missing.
+- **Retry flow** — calls `authStore.initAuth()`; clears error on successful re-auth; escalates to `session_expired` when the backend responds OK but identity is still missing. Only the genuine `service_unavailable` view uses retry; the login-loop sub-state does not.
 - **Dismiss flow** — `ServerErrorView` emits `dismiss` → `authStore.clearError()`.
 
 ---
@@ -52,6 +53,16 @@ Each view consumes its typed props interface, exposes a `primaryAction` ref via 
   - If retry resolves and the view is still mounted (parent kept `service_unavailable`), restart countdown — avoids stuck `"Retry in 0s"`.
   - `dark-mode` media query adjusts muted/danger tokens.
   - `bff-icon-pulse` keyframes animate icon opacity; `bff-spin` rotates the retry icon while retrying.
+
+### `LoginLoopView.vue`
+- **Props:** `LoginLoopViewProps` — `{ error, onSignIn, onSignOut, cooldownEndsAt, config }`.
+- **When:** rendered for `service_unavailable` **only when** `error.code === 'login_loop_detected'` (login redirect circuit breaker tripped). A genuine 429/503 keeps `ServiceUnavailableView`.
+- **Default copy:** title `"Trouble signing in"`, message `"We couldn't complete sign-in after several attempts. Wait a moment and try again, or sign out to start fresh."`, sign-in `"Sign in"`, sign-out `"Sign out"`, cooldown `"Try again in {n}s"` (override via `config.text.loginLoop.cooldownLabel(seconds)`).
+- **Icon slots:** `config.icons.loginLoop` (defaults to the `serviceUnavailable` glyph), `config.icons.login`, `config.icons.signOut`.
+- **Behavior:**
+  - Drives a live countdown from the absolute `cooldownEndsAt` timestamp, shown once as a progress bar + `"Try again in {n}s"` text. The **Sign in** button stays disabled with its static label until the window lapses, then re-enables (no auto-redirect). `cooldownEndsAt === null` → ready immediately.
+  - **Sign out** is always enabled — the guaranteed escape — and is the focus target while sign-in is blocked (`primaryAction` is a computed that points at whichever control is actionable).
+  - `progressbar` role with `aria-valuenow/min/max`; interval cleared on unmount.
 
 ### `DevErrorView.vue`
 - **Props:** `DevErrorViewProps` — `{ error, onSignOut, config }`.

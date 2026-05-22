@@ -137,6 +137,16 @@ Sources: `pkg/httputil/oauth_errors.go` (RFC 6749), `internal/auth/gateway/share
 `validation/error_mapping.go` default. Unmapped validation errors → `INVALID_REQUEST` / `invalid_request` (400) — **USER
 ** recoverable.
 
+## 10. Client-synthesized codes (plugin-only)
+
+These `AuthError.code` values are produced by the plugin itself, never by the backend, so they are intentionally absent
+from `ERROR_CODE_TO_TYPE` and never reported as map drift.
+
+| code                  | type                  | Source                                                        | UX                                                                                              |
+|-----------------------|-----------------------|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| `login_loop_detected` | `service_unavailable` | Login redirect circuit breaker (`recordLoginAttempt` tripped) | `LoginLoopView`: sign-in disabled until the cooldown lapses + always-available **Sign out** escape. After the trip ceiling, forces a clean logout. **Distinct from a server `429`** (`rate_limit_exceeded`), which keeps the wait-and-retry UX. |
+| `rate_limit_exceeded` | `service_unavailable` | Interceptor 429-without-code fallback                         | `ServiceUnavailableView`: wait-and-retry with countdown.                                        |
+
 ---
 
 ## UX routing recommendation

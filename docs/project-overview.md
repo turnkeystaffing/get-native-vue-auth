@@ -39,7 +39,7 @@ No in-repo CI (`.github/workflows/` absent) — release automation lives outside
 - **Interceptors:** `setupAuthInterceptors`, type `AuthStoreInterface`
 - **Router:** `setupAuthGuard`, `createAuthGuard`, type `AuthGuardDependencies`
 - **JWT utilities:** `decodeJwt`, `extractEmailFromJwt`, `decodeAccessToken`, type `JwtPayload`
-- **Circuit breaker:** `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken`
+- **Circuit breaker:** `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken`, `getCircuitBreakerResetAt`, `getCircuitBreakerTripCount`, `hasExceededTripCeiling`, `LOGIN_LOOP_DETECTED`
 - **Component:** `AuthErrorBoundary` (default export from the `.vue` module)
 - **Types:** every type under `src/types/*` — see `src/index.ts` barrel for the authoritative list.
 

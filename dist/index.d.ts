@@ -55,7 +55,7 @@ viewRef: unknown;
 }, any>;
 
 /**
- * Auth error types — five recovery categories.
+ * Auth error types — six recovery categories.
  *
  * Each type corresponds to a distinct user-recovery UX:
  * - `session_expired`: re-authenticate (clears auth state)
@@ -63,13 +63,14 @@ viewRef: unknown;
  * - `dev_error`: OAuth client misconfiguration — terminal; "Contact developer" CTA (does not clear auth)
  * - `account_blocked`: account disabled or insufficient permissions — terminal; "Sign out" CTA (clears auth)
  * - `server_error`: unhandled server/infra failure — terminal; shows `request_id` for support (does not clear auth)
+ * - `permission_denied`: per-request authorization denial (cross-user / missing role) — terminal; "Dismiss" CTA (does not clear auth)
  *
  * Routing is driven by a lowercased error-code table (`ERROR_CODE_TO_TYPE`) with
  * HTTP-status fallbacks when the code is absent.
  *
  * @see PAT-004 Error type mapping
  */
-export declare type AuthErrorType = 'session_expired' | 'service_unavailable' | 'dev_error' | 'account_blocked' | 'server_error';
+export declare type AuthErrorType = 'session_expired' | 'service_unavailable' | 'dev_error' | 'account_blocked' | 'server_error' | 'permission_denied';
 
 /**
  * Escape-hatch: replace the default error views entirely.
@@ -77,16 +78,20 @@ export declare type AuthErrorType = 'session_expired' | 'service_unavailable' | 
  * Props contract (stable public API from v2.0.0):
  * - `sessionExpired` receives {@link SessionExpiredViewProps}
  * - `serviceUnavailable` receives {@link ServiceUnavailableViewProps}
+ * - `loginLoop` receives {@link LoginLoopViewProps}
  * - `devError` receives {@link DevErrorViewProps}
  * - `accountBlocked` receives {@link AccountBlockedViewProps}
  * - `serverError` receives {@link ServerErrorViewProps}
+ * - `permissionDenied` receives {@link PermissionDeniedViewProps}
  */
 export declare interface AuthErrorViews {
     sessionExpired?: Component;
     serviceUnavailable?: Component;
+    loginLoop?: Component;
     devError?: Component;
     accountBlocked?: Component;
     serverError?: Component;
+    permissionDenied?: Component;
 }
 
 /**
@@ -110,6 +115,8 @@ export declare interface AuthIcons {
     login: Component | false;
     /** Icon for service unavailable view title (false to disable) */
     serviceUnavailable: Component | false;
+    /** Icon for login-loop (circuit-breaker) view title (false to disable) */
+    loginLoop: Component | false;
     /** Icon for retry button (false to disable) */
     retry: Component | false;
     /** Icon for dev-error view title (false to disable) */
@@ -118,6 +125,8 @@ export declare interface AuthIcons {
     accountBlocked: Component | false;
     /** Icon for server-error view title (false to disable) */
     serverError: Component | false;
+    /** Icon for permission-denied view title (false to disable) */
+    permissionDenied: Component | false;
     /** Icon for "Sign out" CTA on terminal views (false to disable) */
     signOut: Component | false;
 }
@@ -297,6 +306,16 @@ export declare interface AuthText {
         retryingLabel?: string;
         countdownLabel?: (seconds: number) => string;
     };
+    loginLoop?: {
+        title?: string;
+        message?: string;
+        /** Primary sign-in button label (shown once the cooldown elapses) */
+        signIn?: string;
+        /** Secondary sign-out / return-to-login button label */
+        signOut?: string;
+        /** Label for the disabled sign-in button while the cooldown is counting down */
+        cooldownLabel?: (seconds: number) => string;
+    };
     devError?: {
         title?: string;
         message?: string;
@@ -311,6 +330,11 @@ export declare interface AuthText {
         signOut?: string;
     };
     serverError?: {
+        title?: string;
+        message?: string;
+        dismissButton?: string;
+    };
+    permissionDenied?: {
         title?: string;
         message?: string;
         dismissButton?: string;
@@ -518,9 +542,16 @@ export declare function decodeJwt(token: string | null | undefined): JwtPayload 
  * Consumers can override any/all via the `icons` plugin option, or set to
  * `false` to disable a specific icon.
  *
- * The three new categories (`devError`, `accountBlocked`, `serverError`) reuse
- * `IconServiceUnavailable` by default since these are "something's not right"
- * states; consumers that want category-specific artwork should override.
+ * Each recovery category has its own bundled glyph:
+ * - `sessionExpired` → clock
+ * - `serviceUnavailable` → cloud-off
+ * - `devError` → wrench (developer needs to fix)
+ * - `accountBlocked` → person-prohibited (account/user issue)
+ * - `serverError` → warning triangle (infra failure)
+ * - `permissionDenied` → padlock (per-request authorization denial)
+ *
+ * `loginLoop` reuses the `serviceUnavailable` cloud-off glyph — the tripped
+ * breaker is a connectivity-style failure of the login round-trip.
  * `signOut` reuses `IconLogin` — it's a directional-door icon that reads
  * symmetrically for sign-in and sign-out.
  */
@@ -562,12 +593,41 @@ export declare const ERROR_CODE_TO_TYPE: Readonly<Record<string, AuthErrorType>>
 export declare function extractEmailFromJwt(token: string | null | undefined): string | null;
 
 /**
+ * Timestamp (Unix ms) at which the active window lapses and the breaker
+ * auto-resets, or `null` when the breaker is not currently tripped.
+ *
+ * Drives the cooldown countdown in the login-loop recovery view: while this is
+ * in the future the redirect action stays disabled; once it passes the action
+ * re-enables (the breaker self-clears on the next attempt).
+ *
+ * @param maxAttempts - Maximum allowed attempts (default: 3)
+ * @param windowMs - Time window in ms (default: 120000)
+ */
+export declare function getCircuitBreakerResetAt(maxAttempts?: number, windowMs?: number): number | null;
+
+/**
+ * Number of distinct trip episodes recorded this session.
+ *
+ * Survives window auto-resets; cleared only by {@link resetLoginAttempts}
+ * (successful auth or the explicit sign-out escape).
+ */
+export declare function getCircuitBreakerTripCount(): number;
+
+/**
  * Get the global config
  * Used by services that can't access Vue's injection system
  *
  * @returns The config or null if not initialized
  */
 export declare function getGlobalConfig(): BffAuthConfig | null;
+
+/**
+ * Whether the breaker has tripped enough distinct episodes to warrant a forced
+ * clean logout (clearing a stale BFF session that keeps re-driving the loop).
+ *
+ * @param maxTrips - Trip episodes tolerated before escalation (default: 2)
+ */
+export declare function hasExceededTripCeiling(maxTrips?: number): boolean;
 
 /**
  * Flag indicating if auth is properly configured.
@@ -620,12 +680,48 @@ export declare interface JwtPayload {
 export declare const KNOWN_INLINE_CODES: ReadonlySet<string>;
 
 /**
+ * Error code identifying the breaker-tripped state.
+ *
+ * Set as `AuthError.code` (with `type: 'service_unavailable'`) so error views
+ * can branch to the cooldown/recovery UI and consumers can detect the loop via
+ * the store (`authStore.error?.code === LOGIN_LOOP_DETECTED`). This is a
+ * client-synthesized code — it never originates from the backend — so it is
+ * intentionally absent from `ERROR_CODE_TO_TYPE`.
+ */
+export declare const LOGIN_LOOP_DETECTED = "login_loop_detected";
+
+/**
  * Login credentials for BFF authentication
  */
 export declare interface LoginCredentials {
     email: string;
     password: string;
     totp_code?: string;
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * login-loop view. Shown when the login redirect circuit breaker trips
+ * (`error.code === 'login_loop_detected'`), i.e. the BFF/Central-Login bounce
+ * never establishes a session.
+ *
+ * The view must avoid a dead-end: `onSignIn` should stay disabled until
+ * `cooldownEndsAt` passes (the breaker self-clears then), while `onSignOut`
+ * provides an always-available escape that clears the breaker and the stale
+ * BFF session.
+ */
+export declare interface LoginLoopViewProps {
+    error: AuthError;
+    /** Re-attempt the login redirect. Re-trips the breaker if the cooldown hasn't elapsed. */
+    onSignIn: () => void | Promise<void>;
+    /** Clear the breaker and sign out (clean Central-Login redirect) — the escape hatch. */
+    onSignOut: () => void | Promise<void>;
+    /**
+     * Unix-ms timestamp when the cooldown ends and the redirect re-enables, or
+     * `null` if there is no active cooldown (treat as immediately ready).
+     */
+    cooldownEndsAt: number | null;
+    config: BffAuthConfig;
 }
 
 /**
@@ -704,26 +800,28 @@ export declare function mapErrorCodeToType(code: string | null | undefined, over
 export declare function parseAuthError(error: AxiosError<BackendAuthError>, overrides?: Record<string, AuthErrorType | null>): AuthError | null;
 
 /**
- * Login Redirect Circuit Breaker
+ * Props passed to a consumer-provided replacement for the default
+ * permission-denied view. Per-request authorization denial — the user is
+ * authenticated but cannot perform this specific action (e.g., cross-user
+ * access). Renders a Dismiss action that calls `authStore.clearError()`
+ * via the `dismiss` event.
  *
- * Prevents infinite redirect loops when BFF login and userinfo endpoints
- * disagree about session validity. Tracks login redirect attempts in
- * sessionStorage and stops redirecting after a threshold within a time window,
- * allowing the service-unavailable view to display instead.
- *
- * The time window ensures stale state auto-resets — if the user returns
- * after the window expires, the counter starts fresh. Only rapid successive
- * redirects (the actual loop) trigger the breaker.
- *
- * sessionStorage is used because it survives page reloads (the redirect)
- * but clears on tab close, so users can always recover by opening a new tab.
+ * Events:
+ * - `dismiss` — consumer requests overlay close; `AuthErrorBoundary`
+ *   listens and calls `authStore.clearError()`.
  */
+export declare interface PermissionDeniedViewProps {
+    error: AuthError;
+    config: BffAuthConfig;
+}
+
 /**
  * Record a login redirect attempt.
  * Returns true if the redirect should proceed, false if the circuit breaker has tripped.
  *
  * Attempts are tracked within a time window (default: 2 minutes). If the first
- * attempt was longer ago than the window, the counter resets automatically.
+ * attempt was longer ago than the window, the attempt counter resets
+ * automatically (the `trips` episode counter is preserved).
  *
  * Fails open (returns true) if sessionStorage is unavailable (SSR, private browsing quota).
  *
@@ -733,8 +831,11 @@ export declare function parseAuthError(error: AxiosError<BackendAuthError>, over
 export declare function recordLoginAttempt(maxAttempts?: number, windowMs?: number): boolean;
 
 /**
- * Reset the login attempt counter.
- * Call on successful authentication.
+ * Reset all circuit breaker state, including the trip-episode counter.
+ *
+ * Call on successful authentication, or as part of an explicit escape
+ * (sign out / return to login) so a forced logout doesn't immediately
+ * re-trip the breaker.
  */
 export declare function resetLoginAttempts(): void;
 

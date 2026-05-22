@@ -13,7 +13,12 @@ import type { Router, RouteLocationNormalized, NavigationGuard } from 'vue-route
 import { useAuthStore } from '../stores/auth'
 import { authService, AuthConfigurationError } from '../services/auth'
 import { createLogger } from '@turnkeystaffing/get-native-vue-logger'
-import { recordLoginAttempt, resetLoginAttempts } from '../utils/loginCircuitBreaker'
+import {
+  recordLoginAttempt,
+  resetLoginAttempts,
+  hasExceededTripCeiling,
+  LOGIN_LOOP_DETECTED
+} from '../utils/loginCircuitBreaker'
 
 /**
  * Logger for auth guard operations
@@ -97,7 +102,10 @@ export function createAuthGuard(
 
   /**
    * Attempt a login redirect, or trip the circuit breaker if too many attempts.
-   * When tripped, sets service_unavailable error to show the overlay instead of looping.
+   * When tripped, sets a `login_loop_detected` error so the recoverable
+   * login-loop overlay shows (with cooldown + sign-out escape) instead of
+   * looping. If the loop persists past the trip ceiling, force a clean logout
+   * to clear the stale BFF session that keeps re-driving the bounce.
    */
   function redirectOrTrip(
     authSvc: ReturnType<typeof deps.getAuthService>,
@@ -108,10 +116,21 @@ export function createAuthGuard(
       authSvc.login({ returnUrl })
       return false // cancel navigation, page will redirect
     }
-    // Circuit breaker tripped — show overlay instead of looping
+
+    // Persistent loop — escalate to a clean logout. Reset the breaker first so
+    // the logout→Central-Login redirect can't immediately re-trip it.
+    if (hasExceededTripCeiling()) {
+      logger.error('Login loop trip ceiling exceeded; forcing clean logout to clear stale session')
+      resetLoginAttempts()
+      void authStore.logout()
+      return true // allow navigation; logout triggers a full-page redirect
+    }
+
+    // Circuit breaker tripped — show the recoverable overlay instead of looping.
     logger.error('Login redirect circuit breaker tripped')
     authStore.setError({
       type: 'service_unavailable',
+      code: LOGIN_LOOP_DETECTED,
       message: 'Too many login attempts. Authentication service may be unavailable.'
     })
     return true // allow navigation, overlay will show

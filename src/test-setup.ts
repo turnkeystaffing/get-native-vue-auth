@@ -36,6 +36,7 @@ export const testConfig: BffAuthConfig = {
     sessionExpired: IconStub,
     login: IconStub,
     serviceUnavailable: IconStub,
+    loginLoop: IconStub,
     retry: IconStub,
     devError: IconStub,
     accountBlocked: IconStub,

@@ -54,6 +54,7 @@ function installConfig(overrides: Partial<BffAuthConfig> = {}) {
       sessionExpired: IconStub,
       login: IconStub,
       serviceUnavailable: IconStub,
+      loginLoop: IconStub,
       retry: IconStub,
       devError: IconStub,
       accountBlocked: IconStub,
@@ -163,6 +164,35 @@ describe('AuthErrorBoundary', () => {
     expect(document.querySelector('[data-testid="service-unavailable-view"]')).not.toBeNull()
   })
 
+  it('keeps the wait-and-retry view for a genuine server 429 (not the login-loop view)', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    // Server rate-limit: service_unavailable WITHOUT the login_loop_detected code.
+    store.setError({
+      type: 'service_unavailable',
+      code: 'rate_limit_exceeded',
+      message: 'Too many requests'
+    })
+    await nextTick()
+
+    expect(document.querySelector('[data-testid="service-unavailable-view"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="login-loop-view"]')).toBeNull()
+  })
+
+  it('renders LoginLoopView when error.code is login_loop_detected', async () => {
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    store.setError({
+      type: 'service_unavailable',
+      code: 'login_loop_detected',
+      message: 'Too many sign-in attempts.'
+    })
+    await nextTick()
+
+    expect(document.querySelector('[data-testid="login-loop-view"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="service-unavailable-view"]')).toBeNull()
+  })
+
   it('invokes authStore.logout when Sign out is clicked from AccountBlockedView', async () => {
     mount(AuthErrorBoundary, { attachTo: document.body })
     const store = useAuthStore()
@@ -240,7 +270,7 @@ describe('AuthErrorBoundary', () => {
     expect(loginSpy).toHaveBeenCalledWith(window.location.href)
   })
 
-  it('trips to service_unavailable when the login circuit breaker blocks the redirect', async () => {
+  it('trips to login_loop_detected (not a dead-end) when the breaker blocks the redirect', async () => {
     const { recordLoginAttempt } = await import('../../utils/loginCircuitBreaker')
     // Default threshold is 3; consume all three before mounting so the first
     // in-view click trips the breaker.
@@ -262,6 +292,50 @@ describe('AuthErrorBoundary', () => {
 
     expect(loginSpy).not.toHaveBeenCalled()
     expect(store.error?.type).toBe('service_unavailable')
+    expect(store.error?.code).toBe('login_loop_detected')
+    // The recoverable login-loop view is shown, with sign-in disabled (cooldown)
+    // and a working escape — no ping-pong back to the retry view.
+    await nextTick()
+    const loopView = document.querySelector('[data-testid="login-loop-view"]')
+    expect(loopView).not.toBeNull()
+    const signIn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="login-loop-sign-in-button"]'
+    )
+    expect(signIn!.disabled).toBe(true)
+    expect(
+      document.querySelector('[data-testid="login-loop-sign-out-button"]')
+    ).not.toBeNull()
+  })
+
+  it('escapes the loop: Sign out clears the breaker and calls logout', async () => {
+    const { recordLoginAttempt, isCircuitBroken } = await import(
+      '../../utils/loginCircuitBreaker'
+    )
+    recordLoginAttempt()
+    recordLoginAttempt()
+    recordLoginAttempt()
+    recordLoginAttempt() // tripped
+
+    mount(AuthErrorBoundary, { attachTo: document.body })
+    const store = useAuthStore()
+    const logoutSpy = vi.spyOn(store, 'logout').mockResolvedValue(undefined)
+
+    store.setError({
+      type: 'service_unavailable',
+      code: 'login_loop_detected',
+      message: 'Too many sign-in attempts.'
+    })
+    await nextTick()
+
+    expect(isCircuitBroken()).toBe(true)
+    document
+      .querySelector<HTMLButtonElement>('[data-testid="login-loop-sign-out-button"]')!
+      .click()
+    await nextTick()
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1)
+    // Breaker is reset before logout so the redirect can't immediately re-trip it.
+    expect(isCircuitBroken()).toBe(false)
   })
 
   it('renders a consumer-provided sessionExpired view with stable props', async () => {

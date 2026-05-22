@@ -6,7 +6,15 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { recordLoginAttempt, resetLoginAttempts, isCircuitBroken } from '../loginCircuitBreaker'
+import {
+  recordLoginAttempt,
+  resetLoginAttempts,
+  isCircuitBroken,
+  getCircuitBreakerResetAt,
+  getCircuitBreakerTripCount,
+  hasExceededTripCeiling,
+  LOGIN_LOOP_DETECTED
+} from '../loginCircuitBreaker'
 
 const STORAGE_KEY = 'gn-auth-login-circuit-breaker'
 
@@ -220,6 +228,122 @@ describe('loginCircuitBreaker', () => {
       expect(recordLoginAttempt()).toBe(true)
       expect(recordLoginAttempt()).toBe(true)
       expect(recordLoginAttempt()).toBe(false) // tripped again in new window
+    })
+  })
+
+  describe('getCircuitBreakerResetAt', () => {
+    it('returns null when the breaker has not tripped', () => {
+      expect(getCircuitBreakerResetAt()).toBeNull()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      expect(getCircuitBreakerResetAt()).toBeNull() // below threshold
+    })
+
+    it('returns firstAttemptAt + window once tripped', () => {
+      vi.setSystemTime(new Date('2026-04-16T12:00:00Z'))
+      const start = Date.now()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // count === maxAttempts → tripped
+      expect(getCircuitBreakerResetAt()).toBe(start + 2 * 60 * 1000)
+    })
+
+    it('returns null after the window lapses (breaker self-clears)', () => {
+      vi.setSystemTime(new Date('2026-04-16T12:00:00Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      expect(getCircuitBreakerResetAt()).not.toBeNull()
+
+      vi.setSystemTime(new Date('2026-04-16T12:02:01Z'))
+      expect(getCircuitBreakerResetAt()).toBeNull()
+    })
+  })
+
+  describe('trip ceiling', () => {
+    it('counts one trip episode per window, not per blocked attempt', () => {
+      recordLoginAttempt() // 1
+      recordLoginAttempt() // 2
+      recordLoginAttempt() // 3
+      expect(getCircuitBreakerTripCount()).toBe(0)
+      recordLoginAttempt() // 4 — first crossing → episode 1
+      expect(getCircuitBreakerTripCount()).toBe(1)
+      recordLoginAttempt() // 5 — still blocked, same episode
+      recordLoginAttempt() // 6
+      expect(getCircuitBreakerTripCount()).toBe(1)
+    })
+
+    it('accumulates trip episodes across window resets', () => {
+      vi.setSystemTime(new Date('2026-04-16T12:00:00Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 1
+      expect(getCircuitBreakerTripCount()).toBe(1)
+
+      // New window — the attempt counter resets but trips persist.
+      vi.setSystemTime(new Date('2026-04-16T12:02:01Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 2
+      expect(getCircuitBreakerTripCount()).toBe(2)
+    })
+
+    it('hasExceededTripCeiling trips at the default ceiling of 2 episodes', () => {
+      vi.setSystemTime(new Date('2026-04-16T12:00:00Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 1
+      expect(hasExceededTripCeiling()).toBe(false)
+
+      vi.setSystemTime(new Date('2026-04-16T12:02:01Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 2
+      expect(hasExceededTripCeiling()).toBe(true)
+    })
+
+    it('respects a custom maxTrips ceiling', () => {
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 1
+      expect(hasExceededTripCeiling(1)).toBe(true)
+      expect(hasExceededTripCeiling(3)).toBe(false)
+    })
+
+    it('resetLoginAttempts clears the trip-episode counter', () => {
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 1
+      expect(getCircuitBreakerTripCount()).toBe(1)
+
+      resetLoginAttempts()
+      expect(getCircuitBreakerTripCount()).toBe(0)
+      expect(hasExceededTripCeiling(1)).toBe(false)
+    })
+
+    it('survives window expiry without manual reset (no lazy delete)', () => {
+      vi.setSystemTime(new Date('2026-04-16T12:00:00Z'))
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt()
+      recordLoginAttempt() // episode 1
+
+      // Window lapses; isCircuitBroken must not wipe the persisted trips counter.
+      vi.setSystemTime(new Date('2026-04-16T12:02:01Z'))
+      expect(isCircuitBroken()).toBe(false)
+      expect(getCircuitBreakerTripCount()).toBe(1)
+    })
+  })
+
+  describe('LOGIN_LOOP_DETECTED', () => {
+    it('is the stable client-synthesized code string', () => {
+      expect(LOGIN_LOOP_DETECTED).toBe('login_loop_detected')
     })
   })
 })

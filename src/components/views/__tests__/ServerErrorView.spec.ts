@@ -26,6 +26,7 @@ function makeConfig(overrides: Partial<BffAuthConfig> = {}): BffAuthConfig {
       sessionExpired: IconStub,
       login: IconStub,
       serviceUnavailable: IconStub,
+      loginLoop: IconStub,
       retry: IconStub,
       devError: IconStub,
       accountBlocked: IconStub,

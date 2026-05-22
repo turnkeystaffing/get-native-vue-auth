@@ -58,7 +58,15 @@ export { decodeJwt, extractEmailFromJwt, decodeAccessToken } from './utils/jwt'
 export type { JwtPayload } from './utils/jwt'
 
 // Login circuit breaker
-export { recordLoginAttempt, resetLoginAttempts, isCircuitBroken } from './utils/loginCircuitBreaker'
+export {
+  recordLoginAttempt,
+  resetLoginAttempts,
+  isCircuitBroken,
+  getCircuitBreakerResetAt,
+  getCircuitBreakerTripCount,
+  hasExceededTripCeiling,
+  LOGIN_LOOP_DETECTED
+} from './utils/loginCircuitBreaker'
 
 // Types
 export type {
@@ -83,6 +91,7 @@ export type {
   AuthErrorViews,
   SessionExpiredViewProps,
   ServiceUnavailableViewProps,
+  LoginLoopViewProps,
   DevErrorViewProps,
   AccountBlockedViewProps,
   ServerErrorViewProps,

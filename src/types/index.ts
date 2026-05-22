@@ -29,6 +29,7 @@ export type {
   AuthErrorViews,
   SessionExpiredViewProps,
   ServiceUnavailableViewProps,
+  LoginLoopViewProps,
   DevErrorViewProps,
   AccountBlockedViewProps,
   ServerErrorViewProps,

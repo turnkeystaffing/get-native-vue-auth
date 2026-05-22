@@ -164,6 +164,6 @@ Full table in [error-handling-analysis.md](./error-handling-analysis.md). Summar
 |---|---|
 | Open redirect | `login()` restricts `redirect_url` to same origin; malformed URLs fall back to current page. |
 | Cross-origin (Central Login session-reuse) | `loginWithCustomClient` / `completeOAuthFlow` validate scheme (http/https only) and trim `clientId`; BFF is trusted to validate against registered client URIs. |
-| Redirect loops | Client-side circuit breaker (3 attempts / 2 minutes, sessionStorage) in `utils/loginCircuitBreaker.ts`. Trips to `service_unavailable` so the UI stops redirecting. |
+| Redirect loops | Client-side circuit breaker (3 attempts / 2 minutes, sessionStorage) in `utils/loginCircuitBreaker.ts`. Trips to `service_unavailable` + `code: 'login_loop_detected'` and renders the recoverable `LoginLoopView` (cooldown + sign-out escape) so the UI stops redirecting; persistent loops past the trip ceiling force a clean logout. |
 | Logging | `qr_code`, `secret`, `backup_codes`, `password`, `totp_code` MUST NOT be logged. Interceptor logs `error.message` only. |
 | JWT | `decodeAccessToken` is decode-only. Never trust client-side claims for authorization — the BFF is authoritative. |

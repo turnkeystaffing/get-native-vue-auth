@@ -125,17 +125,20 @@ Factory `createAuthGuard(deps?)` returns a `NavigationGuard`. **Closure-scoped `
 - First navigation: `initAuth()` inside a try/catch (unauthenticated on failure).
 - `waitForAuthInit` — polls `isLoading` every 50ms up to 10s, **fails closed** on timeout (redirects to login).
 - If still unauthenticated, `redirectOrTrip()`:
-  - `recordLoginAttempt()` → proceeds with `authSvc.login({ returnUrl: to.fullPath })` or **trips** the circuit breaker (3 attempts within 2 minutes), setting `service_unavailable` and allowing navigation so the overlay renders instead of looping.
+  - `recordLoginAttempt()` → proceeds with `authSvc.login({ returnUrl: to.fullPath })` or **trips** the circuit breaker (3 attempts within 2 minutes), setting `service_unavailable` with `code: 'login_loop_detected'` and allowing navigation so the recoverable login-loop overlay renders instead of looping. Past the trip ceiling it resets the breaker and forces `authStore.logout()` (clean Central-Login redirect to clear the stale session).
 - `AuthConfigurationError` → `service_unavailable` + allow navigation. Other errors fail closed.
 - Augments `RouteMeta` with `public?: boolean`.
 
 ### `utils/loginCircuitBreaker.ts`
 `sessionStorage`-backed counter keyed at `gn-auth-login-circuit-breaker`.
-- `{ count, firstAttemptAt }`.
-- Window defaults: `maxAttempts = 3`, `windowMs = 120_000`.
-- Stale state (older than the window) is discarded on read.
+- `{ count, firstAttemptAt, trips }` — `count` resets per window; `trips` (distinct trip episodes) survives window resets and is cleared only by `resetLoginAttempts()`.
+- Window defaults: `maxAttempts = 3`, `windowMs = 120_000`; trip ceiling default `maxTrips = 2`.
+- Window expiry is a **pure read** (`isWindowActive`) — no lazy delete — so the stale entry's `trips` counter persists across cooldowns.
 - `recordLoginAttempt()` is **fail-open** — if `sessionStorage` throws (SSR, private-mode quota), returns `true`.
-- `resetLoginAttempts()` called on successful `initAuth()` result and on `isAuthenticated` in the guard.
+- `getCircuitBreakerResetAt()` → cooldown-end timestamp (`firstAttemptAt + windowMs`) when tripped, else `null`; drives the `LoginLoopView` countdown.
+- `getCircuitBreakerTripCount()` / `hasExceededTripCeiling(maxTrips?)` → escalation signal for forcing a clean logout.
+- `LOGIN_LOOP_DETECTED` — exported code constant for the tripped state (set on the `AuthError`, detectable via the store).
+- `resetLoginAttempts()` called on successful `initAuth()` result, on `isAuthenticated` in the guard, and on the explicit login-loop sign-out escape (reset-first, before logout).
 
 ### `utils/jwt.ts`
 - `decodeJwt` / `extractEmailFromJwt` — loose decode with no claim validation.
@@ -145,13 +148,13 @@ Factory `createAuthGuard(deps?)` returns a `NavigationGuard`. **Closure-scoped `
 Reactive-wrapping composable: `computed()` accessors for state (`isAuthenticated`, `user`, `userEmail`, `userRoles`, `decodedToken`, …) plus thin method pass-throughs (`login`, `logout`, `clearError`, `hasRole`). Used in components to avoid importing Pinia directly.
 
 ### `components/AuthErrorBoundary.vue`
-- Watches `error.value?.type` and maps to one of six views; consumer `errorViews.<type>` overrides take precedence over bundled views.
-- Pass-through props are **per-view type-safe** (distinct `SessionExpiredViewProps`, `ServiceUnavailableViewProps`, etc.). Every view receives `{ error, config }`; interactive views also receive `onSignIn` / `onRetry` / `onSignOut`; `ServerErrorView` emits `dismiss` (bound to `authStore.clearError`).
+- Watches `error.value?.type` and maps to a view; consumer `errorViews.<type>` overrides take precedence over bundled views. `service_unavailable` splits on `error.code`: `login_loop_detected` → `LoginLoopView` (override slot `errorViews.loginLoop`), otherwise `ServiceUnavailableView`.
+- Pass-through props are **per-view type-safe** (distinct `SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `LoginLoopViewProps`, etc.). Every view receives `{ error, config }`; interactive views also receive `onSignIn` / `onRetry` / `onSignOut`; the login-loop view also receives `cooldownEndsAt`; `ServerErrorView` emits `dismiss` (bound to `authStore.clearError`).
 - **Accessibility**: Teleports to `<body>`; captures previously-focused element; locks body scroll; traps Tab/Shift+Tab within overlay; focuses `primaryAction` exposed by each view on mount AND on error-type change; restores focus on close. Uses `role="alertdialog"` + `aria-modal="true"` + `aria-live="assertive"` at each view root.
-- **Sign-in** handler applies the login circuit breaker itself (in addition to the guard) so the session-expired view can't infinite-loop the redirect.
-- **Service-unavailable retry** calls `authStore.initAuth()`, clears error on success, and escalates to `session_expired` if the backend responds OK but identity is still missing.
+- **Sign-in** handler applies the login circuit breaker itself (in addition to the guard); on trip it sets `login_loop_detected` (cooldown view, never a dead-end) and, past the trip ceiling, forces the reset-then-logout escape.
+- **Service-unavailable retry** calls `authStore.initAuth()`, clears error on success, and escalates to `session_expired` if the backend responds OK but identity is still missing. The login-loop sub-state does **not** use retry — it offers a cooldown-gated sign-in plus an always-available sign-out, so Retry/Sign-in can't ping-pong.
 
-### `components/views/*` — six recovery views
+### `components/views/*` — recovery views
 Each view:
 - Declares props typed against the corresponding `*ViewProps` from `types/config.ts`.
 - Pulls title / message / button labels from `config.text.<type>?.*` with bundled English defaults.
@@ -160,6 +163,7 @@ Each view:
 
 Distinctive behaviors:
 - **`ServiceUnavailableView`** — 30-second countdown with progress bar (`role="progressbar"` + `aria-valuenow`); auto-retry on countdown tick-to-zero; countdown restarts if retry resolves while view still mounted (prevents stuck `"Retry in 0s"`); `prefers-color-scheme: dark` media query for contrast; customizable `countdownLabel(seconds)` function.
+- **`LoginLoopView`** — circuit-breaker recovery (`code === 'login_loop_detected'`). Sign-in disabled with a live countdown to `cooldownEndsAt`, then re-enables (no auto-redirect); always-available **Sign out** escape (reset-then-logout); the breaker auto-clears when the window lapses. Distinct from a server 429, which stays on `ServiceUnavailableView`.
 - **`DevErrorView`** — renders `error.code` in a monospace pill; static "contact developer" line; CTA is **Sign out** (non-destructive escape hatch for switching accounts since the app is broken).
 - **`AccountBlockedView`** — branches copy on `error.code === 'insufficient_permissions'` vs default `account_inactive` path.
 - **`ServerErrorView`** — emits `dismiss` which the boundary binds to `authStore.clearError()` (it's the only view that can be dismissed without navigation).
@@ -174,6 +178,7 @@ Six recovery categories end-to-end:
 |---|---|---|---|---|
 | `session_expired` | `invalid_grant`, `missing_token`, `invalid_token`, `invalid_user_id`, `user_not_found`, `missing_refresh_token`, `invalid_refresh_token`, `reauth_required`, `session_compromised`, `invalid_session`, `authentication_error` + bare **401** fallback + empty/invalid token response | `SessionExpiredView` | Sign in → `authStore.login()` (full-page redirect, circuit-breaker guarded) | ✅ |
 | `service_unavailable` | `temporarily_unavailable`, `service_unavailable`, `auth_service_unavailable`, `logout_failed`, `sessions_fetch_failed`, `revoke_failed`, `password_change_error`, `resend_email_{failed,error}`, `2fa_{setup,verify}_error`, `rate_limit_exceeded` + bare **429** fallback + `AuthConfigurationError` | `ServiceUnavailableView` | 30s auto-retry or Try Now → `authStore.initAuth()` | ❌ |
+| ↳ `login_loop_detected` (client-synthesized; circuit-breaker trip) | `LoginLoopView` | Sign in (cooldown-gated) → `authStore.login()` · Sign out → `resetLoginAttempts()` + `authStore.logout()` | ❌ |
 | `dev_error` | `invalid_client`, `unauthorized_client`, `unsupported_response_type`, `unsupported_grant_type`, `invalid_scope`, `invalid_redirect_uri`, `client_inactive`, `cors_error` | `DevErrorView` | Sign out → `authStore.logout()` | ❌ |
 | `account_blocked` | `account_inactive`, `insufficient_permissions` | `AccountBlockedView` (branched copy) | Sign out → `authStore.logout()` | ✅ |
 | `server_error` | `server_error`, `internal_error`, `not_implemented`, `unknown_host` | `ServerErrorView` | Dismiss → `authStore.clearError()` | ❌ |
@@ -234,7 +239,7 @@ apiClient.get('/api/v1/endpoint')
 |---|---|
 | Open-redirect | `authService.login()` forces same-origin; non-same-origin return URLs fall back to `/`. Malformed URLs fall back to the current page. |
 | Cross-origin login | `loginWithCustomClient` / `completeOAuthFlow` explicitly skip same-origin enforcement; rely on BFF's registered-client validation. Scheme is restricted to http/https. |
-| Infinite redirect loops | Circuit breaker (3 attempts / 2 minutes via sessionStorage) in both the guard and the `SessionExpiredView` sign-in handler. Fail-open on storage errors. |
+| Infinite redirect loops | Circuit breaker (3 attempts / 2 minutes via sessionStorage) in both the guard and the boundary's sign-in handler. On trip it renders the recoverable `LoginLoopView` (cooldown + sign-out escape) rather than re-redirecting; persistent loops (past the 2-trip ceiling) force a reset-then-logout to clear the stale BFF session. Fail-open on storage errors. |
 | Log hygiene | 2FA setup responses (`secret`, `qr_code`, `backup_codes`) are documented as non-loggable in service JSDoc. Request interceptor logs `error.message` only, not full error object. |
 | Token handling | Tokens never leave Pinia state; not persisted to storage; single-flight refresh via module-scoped promise. |
 | Config safety | `AuthConfigurationError` short-circuits login redirects and interceptor error-writes to prevent cascading state corruption when `bffBaseUrl`/`clientId` are unset. |

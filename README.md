@@ -170,6 +170,8 @@ When an auth error occurs, the plugin maps it to one of six categories. `AuthErr
 
 Each backend code is mapped in [`docs/auth-error-codes.md`](./docs/auth-error-codes.md). You can re-route or silence codes per-app — see [`docs/theming.md#error-code-overrides`](./docs/theming.md#error-code-overrides).
 
+**Login-loop recovery.** When the login redirect circuit breaker trips (the BFF/Central-Login bounce never establishes a session), `service_unavailable` carries the `login_loop_detected` code and renders a dedicated **`loginLoop`** view instead of the wait-and-retry one. It disables sign-in until the cooldown window lapses (with a live countdown), keeps an always-available **Sign out** escape (clears the breaker + revokes the stale BFF session), and forces a clean logout once the loop persists past the trip ceiling. Detect it in app code via `authStore.error?.code === LOGIN_LOOP_DETECTED`; override the view via `errorViews.loginLoop`.
+
 ### Composable, store, or service?
 
 Three ways to read and drive auth state. Pick the one that fits where you're reading from:
@@ -285,9 +287,9 @@ The main runtime exports, grouped. The complete, always-up-to-date list — incl
 | **Interceptors** | `setupAuthInterceptors` |
 | **Router** | `setupAuthGuard`, `createAuthGuard` |
 | **JWT** | `decodeJwt`, `extractEmailFromJwt`, `decodeAccessToken` |
-| **Circuit breaker** | `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken` |
+| **Circuit breaker** | `recordLoginAttempt`, `resetLoginAttempts`, `isCircuitBroken`, `getCircuitBreakerResetAt`, `getCircuitBreakerTripCount`, `hasExceededTripCeiling`, `LOGIN_LOOP_DETECTED` |
 | **Component** | `AuthErrorBoundary` |
-| **Types** | `AuthMode`, `AuthError`, `AuthErrorType`, `UserInfo`, `CheckAuthResponse`, `TokenResponse`, `BackendAuthError`, `LogoutResponse`, `DecodedAccessToken`, `BffAuthPluginOptions`, `BffAuthConfig`, `AuthIcons`, `AuthText`, `AuthErrorViews`, `UnmappedErrorHook`, per-view prop types (`SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `DevErrorViewProps`, `AccountBlockedViewProps`, `ServerErrorViewProps`), service option types (`LoginOptions`, `LoginCredentials`, `LoginWithCustomClientOptions`, `CompleteOAuthFlowOptions`), 2FA types (`TwoFactorErrorCode`, `TwoFactorSetupResponse`, `TwoFactorVerifyResponse`, `TwoFactorResendResponse`, `TwoFactorErrorResponse`), store types (`AuthState`, `AuthStore`), composable type `UseAuth`, `JwtPayload`, `AuthStoreInterface`, `AuthGuardDependencies` |
+| **Types** | `AuthMode`, `AuthError`, `AuthErrorType`, `UserInfo`, `CheckAuthResponse`, `TokenResponse`, `BackendAuthError`, `LogoutResponse`, `DecodedAccessToken`, `BffAuthPluginOptions`, `BffAuthConfig`, `AuthIcons`, `AuthText`, `AuthErrorViews`, `UnmappedErrorHook`, per-view prop types (`SessionExpiredViewProps`, `ServiceUnavailableViewProps`, `LoginLoopViewProps`, `DevErrorViewProps`, `AccountBlockedViewProps`, `ServerErrorViewProps`, `PermissionDeniedViewProps`), service option types (`LoginOptions`, `LoginCredentials`, `LoginWithCustomClientOptions`, `CompleteOAuthFlowOptions`), 2FA types (`TwoFactorErrorCode`, `TwoFactorSetupResponse`, `TwoFactorVerifyResponse`, `TwoFactorResendResponse`, `TwoFactorErrorResponse`), store types (`AuthState`, `AuthStore`), composable type `UseAuth`, `JwtPayload`, `AuthStoreInterface`, `AuthGuardDependencies` |
 
 > Anything not exported from `src/index.ts` is internal and may change without notice.
 

@@ -30,6 +30,8 @@ export interface AuthIcons {
   login: Component | false
   /** Icon for service unavailable view title (false to disable) */
   serviceUnavailable: Component | false
+  /** Icon for login-loop (circuit-breaker) view title (false to disable) */
+  loginLoop: Component | false
   /** Icon for retry button (false to disable) */
   retry: Component | false
   /** Icon for dev-error view title (false to disable) */
@@ -61,6 +63,16 @@ export interface AuthText {
     button?: string
     retryingLabel?: string
     countdownLabel?: (seconds: number) => string
+  }
+  loginLoop?: {
+    title?: string
+    message?: string
+    /** Primary sign-in button label (shown once the cooldown elapses) */
+    signIn?: string
+    /** Secondary sign-out / return-to-login button label */
+    signOut?: string
+    /** Label for the disabled sign-in button while the cooldown is counting down */
+    cooldownLabel?: (seconds: number) => string
   }
   devError?: {
     title?: string
@@ -104,6 +116,31 @@ export interface SessionExpiredViewProps {
 export interface ServiceUnavailableViewProps {
   error: AuthError
   onRetry: () => void | Promise<void>
+  config: BffAuthConfig
+}
+
+/**
+ * Props passed to a consumer-provided replacement for the default
+ * login-loop view. Shown when the login redirect circuit breaker trips
+ * (`error.code === 'login_loop_detected'`), i.e. the BFF/Central-Login bounce
+ * never establishes a session.
+ *
+ * The view must avoid a dead-end: `onSignIn` should stay disabled until
+ * `cooldownEndsAt` passes (the breaker self-clears then), while `onSignOut`
+ * provides an always-available escape that clears the breaker and the stale
+ * BFF session.
+ */
+export interface LoginLoopViewProps {
+  error: AuthError
+  /** Re-attempt the login redirect. Re-trips the breaker if the cooldown hasn't elapsed. */
+  onSignIn: () => void | Promise<void>
+  /** Clear the breaker and sign out (clean Central-Login redirect) — the escape hatch. */
+  onSignOut: () => void | Promise<void>
+  /**
+   * Unix-ms timestamp when the cooldown ends and the redirect re-enables, or
+   * `null` if there is no active cooldown (treat as immediately ready).
+   */
+  cooldownEndsAt: number | null
   config: BffAuthConfig
 }
 
@@ -167,6 +204,7 @@ export interface PermissionDeniedViewProps {
  * Props contract (stable public API from v2.0.0):
  * - `sessionExpired` receives {@link SessionExpiredViewProps}
  * - `serviceUnavailable` receives {@link ServiceUnavailableViewProps}
+ * - `loginLoop` receives {@link LoginLoopViewProps}
  * - `devError` receives {@link DevErrorViewProps}
  * - `accountBlocked` receives {@link AccountBlockedViewProps}
  * - `serverError` receives {@link ServerErrorViewProps}
@@ -175,6 +213,7 @@ export interface PermissionDeniedViewProps {
 export interface AuthErrorViews {
   sessionExpired?: Component
   serviceUnavailable?: Component
+  loginLoop?: Component
   devError?: Component
   accountBlocked?: Component
   serverError?: Component

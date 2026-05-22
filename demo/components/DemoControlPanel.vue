@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../../src/stores/auth'
+import { recordLoginAttempt, resetLoginAttempts } from '../../src/utils/loginCircuitBreaker'
 
 const authStore = useAuthStore()
 const insufficientPermissions = ref(false)
@@ -36,6 +37,21 @@ function triggerServiceUnavailable() {
     type: 'service_unavailable',
     message: 'Authentication service is temporarily unavailable.',
     code: 'rate_limit_exceeded'
+  })
+}
+
+function triggerLoginLoop() {
+  // Trip the circuit breaker first so AuthErrorBoundary computes a real
+  // cooldownEndsAt and LoginLoopView renders its live countdown. A bare
+  // setError() would give cooldownEndsAt=null → no countdown, sign-in enabled.
+  resetLoginAttempts()
+  recordLoginAttempt()
+  recordLoginAttempt()
+  recordLoginAttempt() // count === maxAttempts (3) → tripped
+  authStore.setError({
+    type: 'service_unavailable',
+    code: 'login_loop_detected',
+    message: 'Too many sign-in attempts. Wait a moment, then try again or sign out.'
   })
 }
 
@@ -110,6 +126,10 @@ function triggerOverrideDemo() {
 }
 
 function clearError() {
+  // Also clear any tripped breaker so a lingering trip can't make a later
+  // "Session Expired → Sign in" unexpectedly surface the login-loop view.
+  // No-op when nothing is tripped, so it's safe for every other error state.
+  resetLoginAttempts()
   authStore.clearError()
 }
 
@@ -197,6 +217,12 @@ function resetTheme() {
           @click="triggerServiceUnavailable"
         >
           Service Unavailable (429)
+        </button>
+        <button
+          class="btn btn-danger"
+          @click="triggerLoginLoop"
+        >
+          Login Loop (circuit breaker)
         </button>
         <button
           class="btn btn-muted"

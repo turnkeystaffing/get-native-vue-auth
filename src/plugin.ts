@@ -48,6 +48,8 @@ import IconServerError from './components/icons/IconServerError.vue'
  * - `serverError` → warning triangle (infra failure)
  * - `permissionDenied` → padlock (per-request authorization denial)
  *
+ * `loginLoop` reuses the `serviceUnavailable` cloud-off glyph — the tripped
+ * breaker is a connectivity-style failure of the login round-trip.
  * `signOut` reuses `IconLogin` — it's a directional-door icon that reads
  * symmetrically for sign-in and sign-out.
  */
@@ -55,6 +57,7 @@ export const DEFAULT_ICONS: AuthIcons = {
   sessionExpired: IconSessionExpired,
   login: IconLogin,
   serviceUnavailable: IconServiceUnavailable,
+  loginLoop: IconServiceUnavailable,
   retry: IconRetry,
   devError: IconDevError,
   accountBlocked: IconAccountBlocked,
